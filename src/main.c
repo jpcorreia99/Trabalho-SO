@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+int * pids;
+int pids_count;
+int time_limit = 2;
 
 
 char*** separate_commands(char* argv[], int* number_commands, int** size_commands_array){
@@ -41,20 +44,22 @@ char*** separate_commands(char* argv[], int* number_commands, int** size_command
 
     *number_commands = n_commands;
     *size_commands_array = size_commands;
-    //size_commands_array = malloc(sizeof(int) * (n_commands-1));
-    //memcpy(size_commands_array,size_commands , (n_commands-1) * sizeof(int));
-    printf("OLHA: %d,%d\n",*number_commands,*size_commands_array[0]);
     return command_matrix;
 
 }
 
 int execute_pipe(char*** commands, int command_count, int* size_commands_array ){
+    alarm(time_limit);
     if(command_count < 1) {return -1;}
+    int pid;
+    pids_count = command_count;
+    pids = malloc(sizeof(int)*pids_count);
     if(command_count == 1){
-        if(fork()==0){
+        if((pid = fork())==0){
             execvp(commands[0][0],commands[0]);
             _exit(-1);
         }
+        pids[0] = pid; // nota: o fork devolve o pid do filho para o pai
         return 0;
     }
 
@@ -63,13 +68,14 @@ int execute_pipe(char*** commands, int command_count, int* size_commands_array )
     if(pipe(fildes[0])==-1){
         return -1;
     }
-    if(fork()==0){
+    if((pid = fork())==0){
         close(fildes[0][0]);
         dup2(fildes[0][1],1);
         close(fildes[0][1]);
         execvp(commands[0][0],commands[0]);
         _exit(1);
     }
+    pids[0] = pid;
     close(fildes[0][1]);
 
     int i;
@@ -78,7 +84,8 @@ int execute_pipe(char*** commands, int command_count, int* size_commands_array )
         if(pipe(fildes[i])==-1){
             return -1;
         }
-        if(fork()==0){
+        if((pid = fork())==0){
+
             close(fildes[i][0]);
             dup2(fildes[i-1][0],0);
             close(fildes[i-1][0]);
@@ -87,16 +94,18 @@ int execute_pipe(char*** commands, int command_count, int* size_commands_array )
             execvp(commands[i][0],commands[i]);
             _exit(1);
         }
+        pids[i] = pid;
         close(fildes[i-1][0]);
         close(fildes[i][1]);
     }
 
-    if(fork()==0){
+    if((pid = fork())==0){
         dup2(fildes[i-1][0],0);
         close(fildes[i-1][0]);
         execvp(commands[i][0],commands[i]);
         _exit(1);
     }
+    pids[i] = pid; // i == command_count-1
     close(fildes[i][0]);
     int j;
     for(j=0;j<i;j++){
@@ -107,10 +116,25 @@ int execute_pipe(char*** commands, int command_count, int* size_commands_array )
     
 }
 
+
+void timeout_handler(int signum){
+    for (int i=0; i<pids_count;i++){
+        printf("Killing grep %d due to timeout\n", pids[i]);
+        if(pids[i]>0){ //evitar kill -1;23
+            kill(pids[i],SIGKILL);
+        }
+    }
+}
+
+
 int main(int argc, char* argv[]){
     if(argc<3){
         printf("Not enough arguments\n");
         return -1;
+    }
+
+    if(signal(SIGALRM,timeout_handler)==SIG_ERR){
+        perror("timeouthandler error\n");
     }
 
     if(strcmp("-e",argv[1])==0){
@@ -118,8 +142,6 @@ int main(int argc, char* argv[]){
         int* size_commands_array;
         char*** command_matrix = separate_commands(argv,&number_commands,&size_commands_array);
 
-
-        printf("big kek");
         for(int i=0;i<number_commands;i++){
             printf("%d\n",size_commands_array[i]);
         }
@@ -131,6 +153,18 @@ int main(int argc, char* argv[]){
         }
         execute_pipe(command_matrix,number_commands,size_commands_array);
 
+        printf("pid count: %d\n",pids_count);
+        for(int i=0; i<pids_count;i++){
+            printf("Pid: %d\n",pids[i]);
+        }
+    }else if(strcmp("-i",argv[1])==0){
+        int new_limit = atoi(argv[2]);
+        if(new_limit>0){
+            time_limit = new_limit;
+        }else{
+            printf("Invalid limit\n");
+        }
+        printf("Time limit: %d\n",time_limit);
     }
     wait(NULL);
     return 0;
