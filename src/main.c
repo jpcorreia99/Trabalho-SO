@@ -6,7 +6,9 @@
 
 int * pids;
 int pids_count;
-int time_limit = 2;
+int time_limit_execute = 2;
+
+
 
 
 char*** separate_commands(char* argv[], int* number_commands, int** size_commands_array){
@@ -49,7 +51,7 @@ char*** separate_commands(char* argv[], int* number_commands, int** size_command
 }
 
 int execute_pipe(char*** commands, int command_count, int* size_commands_array ){
-    alarm(time_limit);
+    alarm(time_limit_execute);
     if(command_count < 1) {return -1;}
     int pid;
     pids_count = command_count;
@@ -119,7 +121,7 @@ int execute_pipe(char*** commands, int command_count, int* size_commands_array )
 
 void timeout_handler(int signum){
     for (int i=0; i<pids_count;i++){
-        printf("Killing grep %d due to timeout\n", pids[i]);
+        printf("Killing process %d due to timeout\n", pids[i]);
         if(pids[i]>0){ //evitar kill -1;23
             kill(pids[i],SIGKILL);
         }
@@ -157,14 +159,14 @@ int main(int argc, char* argv[]){
         for(int i=0; i<pids_count;i++){
             printf("Pid: %d\n",pids[i]);
         }
-    }else if(strcmp("-i",argv[1])==0){
+    }else if(strcmp("-m",argv[1])==0){
         int new_limit = atoi(argv[2]);
         if(new_limit>0){
-            time_limit = new_limit;
+            time_limit_execute = new_limit;
         }else{
             printf("Invalid limit\n");
         }
-        printf("Time limit: %d\n",time_limit);
+        printf("Time limit: %d\n",time_limit_execute);
     }
     wait(NULL);
     return 0;
