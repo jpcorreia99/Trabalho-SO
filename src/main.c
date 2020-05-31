@@ -9,7 +9,11 @@ int pids_count;
 int time_limit_execute = 2;
 
 
-
+typedef struct record{
+    char* name;
+    int status;
+    int pid; //toKill
+}*Record;
 
 char*** separate_commands(char* argv[], int* number_commands, int** size_commands_array){
     char *str = argv[2];
@@ -50,7 +54,7 @@ char*** separate_commands(char* argv[], int* number_commands, int** size_command
 
 }
 
-int execute_pipe(char*** commands, int command_count, int* size_commands_array ){
+int execute_pipe(char*** commands, int command_count, int* size_commands_array){
     alarm(time_limit_execute);
     if(command_count < 1) {return -1;}
     int pid;
@@ -87,7 +91,6 @@ int execute_pipe(char*** commands, int command_count, int* size_commands_array )
             return -1;
         }
         if((pid = fork())==0){
-
             close(fildes[i][0]);
             dup2(fildes[i-1][0],0);
             close(fildes[i-1][0]);
@@ -128,47 +131,205 @@ void timeout_handler(int signum){
     }
 }
 
+ssize_t readln(int fd, char** line, size_t size){
+	
+}
 
 int main(int argc, char* argv[]){
-    if(argc<3){
+    
+    /*if(argc<3){
         printf("Not enough arguments\n");
         return -1;
-    }
+    }*/
+
+    Record records_array[1024];
+    int noRecords = 0;
 
     if(signal(SIGALRM,timeout_handler)==SIG_ERR){
         perror("timeouthandler error\n");
     }
 
-    if(strcmp("-e",argv[1])==0){
-        int number_commands;
-        int* size_commands_array;
-        char*** command_matrix = separate_commands(argv,&number_commands,&size_commands_array);
 
-        for(int i=0;i<number_commands;i++){
-            printf("%d\n",size_commands_array[i]);
-        }
+    if(argc == 0){
+        /*
+        char* buf;
+        int size;
+        while((size = read(0,buf,1024)) != 1);
+        char* token = strtok(buf, " ");
+        int _argc =0;
+        char** _argv;
+        while(token != NULL) {
+            _argv[_argc++] = token;
+            token = strtok(NULL, buf);
+        }*/
+        if(argv[1][0] = '-'){
+            switch(argv[1][1]){
+                case 'm':{
+                    int new_limit = atoi(argv[2]);
+                    if(new_limit>0){
+                        time_limit_execute = new_limit;
+                    }else{
+                        printf("Invalid limit\n");
+                    }
+                    printf("Time limit: %d\n",time_limit_execute);
+                    break;
+                }
+                case 'e':{
+                    //Record init
+                    Record record = malloc(sizeof(Record));
+                    record->name = "Goodbye Cruel World";
+                    record->status = 0;
+                    record->pid = getpid();
+                    records_array[noRecords++] = record;
+                    //
+                    int number_commands;
+                    int* size_commands_array;
+                    char*** command_matrix = separate_commands(argv,&number_commands,&size_commands_array);
 
-        for(int i=0; i<number_commands;i++){
-            for(int j=0; j<size_commands_array[i] ; j++){
-                printf("%d %d %s//\n",i,j,command_matrix[i][j]);
+                    for(int i=0;i<number_commands;i++){
+                        printf("%d\n",size_commands_array[i]);
+                    }
+
+                    for(int i=0; i<number_commands;i++){
+                        for(int j=0; j<size_commands_array[i] ; j++){
+                            printf("%d %d %s//\n",i,j,command_matrix[i][j]);
+                        }
+                    }
+
+                    if(fork() == 0){
+                        int status;
+                        pid_t pid = execute_pipe(command_matrix,number_commands,size_commands_array);
+                        printf("nova tarefa #%i\n",noRecords);
+                        if(waitpid(pid,&status,0) != -1){
+                            record->status = 1;
+                        }
+                        printf("pid count: %d\n",pids_count);
+                        for(int i=0; i<pids_count;i++)
+                            printf("Pid: %d\n",pids[i]);
+                    }
+                    break;
+                }
+                case'r':{
+                    for(int index = 0; index < noRecords; index++){
+                        switch(records_array[index]->status)
+                           case 1:{
+                                printf("#%i, concluida: %s", index+1, records_array[index]->name);
+                                break;
+                           }
+                           case 2:{
+                                printf("#%i, max inactividade: %s", index+1, records_array[index]->name);
+                                break;
+                           }                    }
+                    break;
+                }
+                case'l':{
+                    for(int index2 = 0; index2 < noRecords; index2++){
+                        if(!records_array[index2]->status)
+                           printf("#%i: %s", index2+1, records_array[index2]->name);
+                    }
+                    break;
+                }
+                case'k':{
+                    //TODO
+                    kill(records_array[atoi(argv[2]) - 1]->pid,0);
+                }
+                case'h':{
+                    printf("-i segs\n");
+                    printf("-m segs\n");
+                    printf("-e p1 | p2 ... | pn");
+                    printf("-l\n");
+                    printf("-t n\n");
+                    printf("-r\n");
+                    printf("-h\n");
+                    break;
+                }
             }
         }
-        execute_pipe(command_matrix,number_commands,size_commands_array);
+    }else{
+        if(argv[1][0] = '-'){
+            switch(argv[1][1]){
+                case 'm':{
+                    int new_limit = atoi(argv[2]);
+                    if(new_limit>0){
+                        time_limit_execute = new_limit;
+                    }else{
+                        printf("Invalid limit\n");
+                    }
+                    printf("Time limit: %d\n",time_limit_execute);
+                    break;
+                }
+                case 'e':{
+                    //Record init
+                    Record record = malloc(sizeof(Record));
+                    record->name = "Goodbye Cruel World";
+                    record->status = 0;
+                    record->pid = getpid();
+                    records_array[noRecords++] = record;
+                    //
+                    int number_commands;
+                    int* size_commands_array;
+                    char*** command_matrix = separate_commands(argv,&number_commands,&size_commands_array);
 
-        printf("pid count: %d\n",pids_count);
-        for(int i=0; i<pids_count;i++){
-            printf("Pid: %d\n",pids[i]);
+                    for(int i=0;i<number_commands;i++){
+                        printf("%d\n",size_commands_array[i]);
+                    }
+
+                    for(int i=0; i<number_commands;i++){
+                        for(int j=0; j<size_commands_array[i] ; j++){
+                            printf("%d %d %s//\n",i,j,command_matrix[i][j]);
+                        }
+                    }
+
+                    if(fork() == 0){
+                        int status;
+                        pid_t pid = execute_pipe(command_matrix,number_commands,size_commands_array);
+                        printf("nova tarefa #%i\n",noRecords);
+                        if(waitpid(pid,&status,0) != -1){
+                            record->status = 1;
+                        }
+                        printf("pid count: %d\n",pids_count);
+                        for(int i=0; i<pids_count;i++)
+                            printf("Pid: %d\n",pids[i]);
+                    }
+                    break;
+                }
+                case'r':{
+                    for(int index = 0; index < noRecords; index++){
+                        switch(records_array[index]->status)
+                           case 1:{
+                                printf("#%i, concluida: %s", index+1, records_array[index]->name);
+                                break;
+                           }
+                           case 2:{
+                                printf("#%i, max inactividade: %s", index+1, records_array[index]->name);
+                                break;
+                           }                    }
+                    break;
+                }
+                case'l':{
+                    for(int index2 = 0; index2 < noRecords; index2++){
+                        if(!records_array[index2]->status)
+                           printf("#%i: %s", index2+1, records_array[index2]->name);
+                    }
+                    break;
+                }
+                case'k':{
+                    //TODO
+                    kill(records_array[atoi(argv[2]) - 1]->pid,0);
+                }
+                case'h':{
+                    printf("-i segs\n");
+                    printf("-m segs\n");
+                    printf("-e p1 | p2 ... | pn");
+                    printf("-l\n");
+                    printf("-t n\n");
+                    printf("-r\n");
+                    printf("-h\n");
+                    break;
+                }
+            }
         }
-    }else if(strcmp("-m",argv[1])==0){
-        int new_limit = atoi(argv[2]);
-        if(new_limit>0){
-            time_limit_execute = new_limit;
-        }else{
-            printf("Invalid limit\n");
-        }
-        printf("Time limit: %d\n",time_limit_execute);
-    }
+    }    
     wait(NULL);
     return 0;
-
 }
