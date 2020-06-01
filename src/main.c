@@ -149,42 +149,45 @@ int main(int argc, char* argv[]){
         perror("timeouthandler error\n");
     }
 
+    ssize_t readln(int fd, char* line, size_t size){
+	    int i;
+	    for(i = 0; read(fd,line+i,1) && line[i] != '\n' && i < size; i++);
+	    return i;
+    }
 
-    if(argc == 0){
-        /*
-        char* buf;
-        int size;
-        while((size = read(0,buf,1024)) != 1);
+    if(argc == 1){
+        char buf[1024];
+        char* _argv[1024];
+        int _argc = 0;
+        write(0,"argus$ ",strlen("argus$ "));
+        ssize_t size = readln(0,buf,1024); 
+        printf("Buf: %s",buf);
         char* token = strtok(buf, " ");
-        int _argc =0;
-        char** _argv;
         while(token != NULL) {
             _argv[_argc++] = token;
             token = strtok(NULL, buf);
-        }*/
-        if(argv[1][0] = '-'){
-            switch(argv[1][1]){
-                case 'm':{
-                    int new_limit = atoi(argv[2]);
+        }
+        for(int ai = 0; ai <argc; ai++) printf("%s ",argv[ai]);
+        if(strcmp(_argv[0],"tempo-inactividade") == 0){
+                    int new_limit = atoi(_argv[2]);
                     if(new_limit>0){
                         time_limit_execute = new_limit;
                     }else{
                         printf("Invalid limit\n");
                     }
                     printf("Time limit: %d\n",time_limit_execute);
-                    break;
-                }
-                case 'e':{
+        }
+        else if(strcmp(_argv[0],"executar") == 0){
                     //Record init
                     Record record = malloc(sizeof(Record));
-                    record->name = "Goodbye Cruel World";
+                    record->name = "Goodbye Cruel World";//TESTE
                     record->status = 0;
                     record->pid = getpid();
                     records_array[noRecords++] = record;
                     //
                     int number_commands;
                     int* size_commands_array;
-                    char*** command_matrix = separate_commands(argv,&number_commands,&size_commands_array);
+                    char*** command_matrix = separate_commands(_argv,&number_commands,&size_commands_array);
 
                     for(int i=0;i<number_commands;i++){
                         printf("%d\n",size_commands_array[i]);
@@ -207,46 +210,42 @@ int main(int argc, char* argv[]){
                         for(int i=0; i<pids_count;i++)
                             printf("Pid: %d\n",pids[i]);
                     }
-                    break;
                 }
-                case'r':{
-                    for(int index = 0; index < noRecords; index++){
-                        switch(records_array[index]->status)
-                           case 1:{
-                                printf("#%i, concluida: %s", index+1, records_array[index]->name);
-                                break;
-                           }
-                           case 2:{
-                                printf("#%i, max inactividade: %s", index+1, records_array[index]->name);
-                                break;
-                           }                    }
-                    break;
-                }
-                case'l':{
-                    for(int index2 = 0; index2 < noRecords; index2++){
-                        if(!records_array[index2]->status)
-                           printf("#%i: %s", index2+1, records_array[index2]->name);
+        else if(strcmp(_argv[0],"historico") == 0){
+                for(int index = 0; index < noRecords; index++){
+                    switch(records_array[index]->status){
+                        case 1:{
+                            printf("#%i, concluida: %s", index+1, records_array[index]->name);
+                            break;
+                        }
+                        case 2:{
+                            printf("#%i, max inactividade: %s", index+1, records_array[index]->name);
+                            break;
+                        }                    
                     }
-                    break;
                 }
-                case'k':{
-                    //TODO
-                    kill(records_array[atoi(argv[2]) - 1]->pid,0);
-                }
-                case'h':{
-                    printf("-i segs\n");
-                    printf("-m segs\n");
-                    printf("-e p1 | p2 ... | pn");
-                    printf("-l\n");
-                    printf("-t n\n");
-                    printf("-r\n");
-                    printf("-h\n");
-                    break;
+            }    
+        else if(strcmp(_argv[0],"listar") == 0){
+                for(int index2 = 0; index2 < noRecords; index2++){
+                    if(!records_array[index2]->status)
+                        printf("#%i: %s", index2+1, records_array[index2]->name);
                 }
             }
+        else if(strcmp(_argv[0],"terminar") == 0){
+            //TODO
+            kill(records_array[atoi(argv[2]) - 1]->pid,0);
+        }
+        else if(strcmp(_argv[0],"ajuda") == 0){
+                write(1,"  tempo-inactividade segs\n",strlen("  tempo-inactividade segs\n"));
+                write(1,"  tempo-execucao segs\n",strlen("  tempo-execucao segs\n"));
+                write(1,"  executar p1 | p2 ... | pn",strlen("  executar p1 | p2 ... | pn"));
+                write(1,"  listar\n",strlen("  listar\n"));
+                write(1,"  terminar n\n",strlen("  terminar n\n"));
+                write(1,"  historico\n",strlen("  historico\n"));
+                write(1,"  ajuda\n",strlen("  ajuda\n"));
         }
     }else{
-        if(argv[1][0] = '-'){
+        if(argv[1][0] == '-'){
             switch(argv[1][1]){
                 case 'm':{
                     int new_limit = atoi(argv[2]);
