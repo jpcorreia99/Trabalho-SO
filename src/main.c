@@ -169,7 +169,7 @@ int main(int argc, char* argv[]) {
         int _argc = 0;
         char* buf;
         //char buf[1024];
-        char* aux;
+        //char* aux;
         char** _argv;
         noRecords = 0;
         while (in) {
@@ -179,20 +179,22 @@ int main(int argc, char* argv[]) {
             ssize_t size = readln(0, buf, 1024);
             buf[size] = '\0';
             printf("buf: %s\n", buf);
-            int count = 1;
+            //_argv = (char**)realloc(_argv, 2 * sizeof(char*));
+            //_argv = (char**)realloc(_argv, count * sizeof(char*));
+
+            /*int count = 0;
             aux = malloc(sizeof(buf));
             strcpy(aux, buf);
+            
             while((aux = strchr(aux, ' ')) != NULL){
                 count++;
                 aux++;
             }
-            printf("count: %i\n",count);
-            char* token = strtok(buf, " ");
-            _argv = (char**)realloc(_argv, count * sizeof(char*));
-            while (token != NULL) {
-                _argv[_argc++] = token;
-                token = strtok(NULL, buf);
-            }
+            printf("count: %i\n",count);*/
+            _argv = (char**)realloc(_argv, 2 * sizeof(char*));
+            _argv[0] = strtok(buf, " ");
+            _argv[1] = strtok(NULL, "\0");
+            _argc = 2;
 
             for (int ai = 0; ai < _argc; ai++) {
                 printf("_argv[%i] = %s\n", ai, _argv[ai]);
@@ -209,13 +211,15 @@ int main(int argc, char* argv[]) {
             } else if (strcmp(_argv[0], "executar") == 0) {
                 // Record init
                 Record record = malloc(sizeof(Record));
-                char* name;
+                /*char* name;
                 for (int index3 = 1; index3 < _argc; index3++) {
                     name = realloc(name, sizeof(_argv[index3]));
                     name = strcat(name, _argv[index3]);
                 }
                 record->name = realloc(record->name, sizeof(name));
-                strcpy(record->name, name);
+                strcpy(record->name, name);*/
+                record->name = realloc(record->name, sizeof(_argv[1]));
+                strcpy(record->name, _argv[1]);
                 record->status = 0;
                 record->pid = getpid();
                 records_array[noRecords++] = record;
@@ -296,7 +300,7 @@ int main(int argc, char* argv[]) {
                 in = 0;
         }
         free(buf);
-        free(aux);
+        //free(aux);
         free(_argv);
     } else {
         // int logsfd = open("../documents/logs.txt",O_RDWR,0666);
