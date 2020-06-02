@@ -158,18 +158,26 @@ int main(int argc, char* argv[]){
     if(argc == 1){
         int in = 1;
         int _argc = 0;
+        char *buf;
+        char** _argv;
         while(in){
-            char buf[1024];
-            char* _argv[1024];
+            buf = realloc(buf,1024);
             _argc = 0;
             write(0,"argus$ ",strlen("argus$ "));
             ssize_t size = readln(0,buf,1024); 
-            
             buf[size] = '\0';
             printf("buf: %s\n", buf);
-
+            int count = 0;
+            char *aux = malloc(sizeof(buf));
+            strcpy(aux,buf);
+            while((aux = strchr(aux, ' ')) != NULL) {
+                count++;
+                aux++;
+            }
             char* token = strtok(buf, " ");
+            _argv = (char**) realloc(_argv,count*sizeof(char*));
             while(token != NULL) {
+                _argv[_argc] = (char*) realloc(_argv[_argc],strlen(token));
                 _argv[_argc++] = token;
                 token = strtok(NULL, buf);
             }
@@ -190,7 +198,13 @@ int main(int argc, char* argv[]){
             else if(strcmp(_argv[0],"executar") == 0){
                         //Record init
                         Record record = malloc(sizeof(Record));
-                        record->name = "Goodbye Cruel World";//TESTE
+                        char* name;
+                        for(int index3 = 1; index3 < _argc; index3++){
+                            name = realloc(name,sizeof(_argv[index3]));
+                            name = strcat(name,_argv[index3]);
+                        }
+                        record->name = realloc(record->name,sizeof(name));
+                        strcpy(record->name,name);
                         record->status = 0;
                         record->pid = getpid();
                         records_array[noRecords++] = record;
@@ -256,6 +270,7 @@ int main(int argc, char* argv[]){
             }else if(strcmp(_argv[0],"quit") == 0 || strcmp(_argv[0],"q") == 0) in = 0;
         }
     }else{
+        //int logsfd = open("../documents/logs.txt",O_RDWR,0666);
         if(argv[1][0] == '-'){
             switch(argv[1][1]){
                 case 'm':{
@@ -266,12 +281,18 @@ int main(int argc, char* argv[]){
                         printf("Invalid limit\n");
                     }
                     printf("Time limit: %d\n",time_limit_execute);
-                    break;
+                    break;;
                 }
                 case 'e':{
                     //Record init
                     Record record = malloc(sizeof(Record));
-                    record->name = "Goodbye Cruel World";
+                    char* name;
+                    for(int index3 = 1; index3 < argc; index3++){
+                        name = realloc(name,sizeof(argv[index3]));
+                        name = strcat(name,argv[index3]);
+                    }
+                    record->name = realloc(record->name,sizeof(name));
+                    strcpy(record->name,name);
                     record->status = 0;
                     record->pid = getpid();
                     records_array[noRecords++] = record;
