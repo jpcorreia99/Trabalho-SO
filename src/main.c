@@ -239,22 +239,26 @@ int main(int argc, char* argv[]) {
                     }
                 }
 
+                int status;
                 if (fork() == 0) {
-                    int status;
                     pid_t pid = execute_pipe(command_matrix, number_commands,
                                              size_commands_array);
                     printf("nova tarefa #%i\n", noRecords);
-                    if (waitpid(pid, &status, 0) != -1) {
-                        record->status = 1;
-                    }
                     //TODO
                     //record->status = 1;
                     printf("pid count: %d\n", pids_count);
                     for (int i = 0; i < pids_count; i++)
                         printf("Pid: %d\n", pids[i]);
                     _exit(1);    
+                }else{
+                    wait(&status);
+                    //waitpid(pid, &status, 0);
+                    //if (waitpid(pid, &status, 0) != -1) {
+                    if(WIFEXITED(status)){
+                        record->status = 1;
+                    }
                 }
-                wait(NULL);
+                //wait(NULL);
             } else if (strcmp(_argv[0], "historico") == 0) {
                 printf("No Records: %d\n",noRecords);
                 for (int index = 0; index < noRecords; index++) {
@@ -289,8 +293,8 @@ int main(int argc, char* argv[]) {
                       strlen("  tempo-inactividade segs\n"));
                 write(1, "  tempo-execucao segs\n",
                       strlen("  tempo-execucao segs\n"));
-                write(1, "  executar p1 | p2 ... | pn",
-                      strlen("  executar p1 | p2 ... | pn"));
+                write(1, "  executar p1 | p2 ... | pn\n",
+                      strlen("  executar p1 | p2 ... | pn\n"));
                 write(1, "  listar\n", strlen("  listar\n"));
                 write(1, "  terminar n\n", strlen("  terminar n\n"));
                 write(1, "  historico\n", strlen("  historico\n"));
