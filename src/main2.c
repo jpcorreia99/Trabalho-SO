@@ -8,11 +8,12 @@
 int* pids;
 int pids_count;
 int time_limit_execute = 2;
+int time_limit_comunication = 1;
 
 typedef struct record {
     char* name;
     int status;
-    int * pids;  // toKill
+    int* pids;  // toKill
     int pids_count;
 } * Record;
 
@@ -26,7 +27,7 @@ char*** separate_commands(char* str, int* number_commands,
     int n_args = 0;      // contará em cada comando o número de argumentos
     int n_commands = 0;  // nº de comandos
 
-    int* size_commands = malloc(sizeof(int));  // array que guarda o número de parametros de cada
+    int* size_commands;  // array que guarda o número de parametros de cada
                          // comando
     command_matrix = malloc(sizeof(char**));
     while (tokenized_string) {
@@ -34,6 +35,7 @@ char*** separate_commands(char* str, int* number_commands,
             command_matrix[n_commands] = realloc(
                 command_matrix[n_commands],
                 sizeof(char*) * ++n_args);  // aloca espaço para mais um comando
+
             command_matrix[n_commands][n_args - 1] = tokenized_string;
         } else {
             command_matrix[n_commands] = realloc(
@@ -59,8 +61,6 @@ char*** separate_commands(char* str, int* number_commands,
                 sizeof(char*) * ++n_args);  // aloca espaço para mais um comando
     command_matrix[n_commands][n_args - 1] =
         NULL;  // teermina a lista de strings de um comandos em null
-    printf("%d\n",size_commands[0]);
-    printf("%d\n",n_commands);
     size_commands = realloc(size_commands, sizeof(int) * (n_commands + 1));
     size_commands[n_commands++] = n_args;
 
@@ -70,7 +70,7 @@ char*** separate_commands(char* str, int* number_commands,
 }
 
 int execute_pipe(char*** commands, int command_count,
-                 int* size_commands_array, int** record_pids) {
+                 int* size_commands_array, int* record_pids) {
     alarm(time_limit_execute);
     if (command_count < 1) {
         return -1;
@@ -78,16 +78,15 @@ int execute_pipe(char*** commands, int command_count,
     int pid;
     pids_count = command_count;
     pids = malloc(sizeof(int) * pids_count);
-    *record_pids = malloc(sizeof(int) * pids_count);
-    memset(*record_pids,-1,pids_count);
-
+    //memset(record_pids,-1,pids_count);
+    //record_pids = malloc(sizeof(int) * pids_count);
     if (command_count == 1) {
         if ((pid = fork()) == 0) {
             execvp(commands[0][0], commands[0]);
             _exit(-1);
         }
         pids[0] = pid;  // nota: o fork devolve o pid do filho para o pai
-        //record_pids[0] = pid;  // nota: o fork devolve o pid do filho para o pai
+        record_pids[0] = pid;  // nota: o fork devolve o pid do filho para o pai
         return 0;
     }
 
@@ -100,13 +99,17 @@ int execute_pipe(char*** commands, int command_count,
         close(fildes[0][0]);
         dup2(fildes[0][1], 1);
         close(fildes[0][1]);
+        /**
+         * ler do extremo de escrita e enviar o que li para o exec
+         * */
         execvp(commands[0][0], commands[0]);
         _exit(1);
     }
-    close(fildes[0][1]);
     pids[0] = pid;
+    record_pids[0] = pid;
+    close(fildes[0][1]);
 
-    int i=1;
+    int i;
     for (i = 1; i < command_count - 1; i++) {
         if (pipe(fildes[i]) == -1) {
             return -1;
@@ -121,21 +124,43 @@ int execute_pipe(char*** commands, int command_count,
             _exit(1);
         }
         pids[i] = pid;
+        record_pids[i] = pid;
         close(fildes[i - 1][0]);
         close(fildes[i][1]);
     }
+
     if ((pid = fork()) == 0) {
-        dup2(fildes[i - 1][0], 0);
-        close(fildes[i - 1][0]);
+        //dup2(fildes[i - 1][0], 0);
+        //close(fildes[i - 1][0]);
+
+        char buf[5];
+        int n_bytes;
+        int fildes_aux[2];
+        if(pipe(fildes_aux)==-1){
+            _exit(1);
+        }
+        alarm(time_limit_comunication);
+        while((n_bytes = read(fildes[i-1][0], buf, 5))>0){
+            alarm(0);
+            write(fildes_aux[1], buf, n_bytes);
+            printf("%s",buf);
+        }
+        close(fildes_aux[1]);
+        close(fildes[i-1][0]);
+        dup2(fildes_aux[0],0);
+        close(fildes_aux[0]);
+
         execvp(commands[i][0], commands[i]);
         _exit(1);
     }
     pids[i] = pid;  // i == command_count-1
+    record_pids[i] = pid;  // i == command_count-1
     close(fildes[i][0]);
-    for (int j = 0; j < i; j++) {
+    int j;
+    for (j = 0; j < i; j++) {
         wait(NULL);
     }
-    memcpy(*record_pids,pids,command_count*sizeof(int));
+
     return 0;
 }
 
@@ -159,14 +184,14 @@ ssize_t readln(int fd, char* line, size_t size) {
 
 int main(int argc, char* argv[]) {
 
-    //int index_fd = open("../files/index.txt", O_CREAT |O_RDWR, 0664);
-    //int log_fd = open("../files/log.txt", O_CREAT | O_RDWR, 0664);
+    int index_fd = open("../files/index.txt", O_CREAT |O_RDWR, 0664);
+    int log_fd = open("../files/log.txt", O_CREAT | O_RDWR, 0664);
 
-    // dup2(log_fd,1);
-    /*stdout*/
-	//close(log_fd);
+    dup2(log_fd,1);/*stdout*/
+	close(log_fd);
     int inicio,fim;
     inicio = 0;
+
     /*if(argc<3){
         printf("Not enough arguments\n");
         return -1;
@@ -215,7 +240,6 @@ int main(int argc, char* argv[]) {
                 printf("_argv[%i] = %s\n", ai, _argv[ai]);
             }
 
-            //retirar asspas
             if (strcmp(_argv[0], "tempo-inactividade") == 0) {
                 int new_limit = atoi(_argv[1]);
                 if (new_limit > 0) {
@@ -247,16 +271,15 @@ int main(int argc, char* argv[]) {
                 //    }
                 //}
                 record->pids = malloc(number_commands*sizeof(int));
-                memset(record->pids,-1,number_commands);
-                //for(int i = 0; i < number_commands; i++)record->pids[i] = -1;
+                for(int i = 0; i < number_commands; i++)record->pids[i] = -1;
                 record->pids_count = number_commands;
                 int status;
                 if (fork() == 0) {
                     pid_t pid = execute_pipe(command_matrix, number_commands,
-                                             size_commands_array,&(record->pids));
+                                             size_commands_array,record->pids);
                     //printf("pid count: %d\n", pids_count);
                     //for (int i = 0; i < pids_count; i++)
-                        //printf("Pid: %d\n",record->pids[i]);
+                        //printf("Pid: %d\n", pids[i]);
                     printf("nova tarefa #%i\n", noRecords);
                     //sleep(1000);
                     _exit(1);
@@ -345,18 +368,26 @@ int main(int argc, char* argv[]) {
                 case 'e': {
                     // Record init
                     Record record = malloc(sizeof(Record));
+                    char* name;
+                    for (int index3 = 1; index3 < argc; index3++) {
+                        name = realloc(name, sizeof(argv[index3]));
+                        name = strcat(name, argv[index3]);
+                    }
+                    record->name = realloc(record->name, sizeof(name));
+                    strcpy(record->name, name);
                     record->status = 0;
                     record->pids = NULL;
                     records_array[noRecords++] = record;
+                    //
                     int number_commands;
                     int* size_commands_array;
-                    printf("Argv[2]: %s\n", argv[2]);
                     char*** command_matrix = separate_commands(
                         argv[2], &number_commands, &size_commands_array);
+
                     for (int i = 0; i < number_commands; i++) {
-                        printf("%d, ", size_commands_array[i]);
+                        printf("%d\n", size_commands_array[i]);
                     }
-                    printf("\n");
+
                     for (int i = 0; i < number_commands; i++) {
                         for (int j = 0; j < size_commands_array[i]; j++) {
                             printf("%d %d %s//\n", i, j, command_matrix[i][j]);
@@ -367,19 +398,14 @@ int main(int argc, char* argv[]) {
                         int status;
                         pid_t pid =
                             execute_pipe(command_matrix, number_commands,
-                                         size_commands_array,&(record->pids));
+                                         size_commands_array,record->pids);
+                        printf("nova tarefa #%i\n", noRecords);
                         if (waitpid(pid, &status, 0) != -1) {
                             record->status = 1;
                         }
-                
-                        printf("nova tarefa #%i\n", noRecords);
-
-
-                        /*printf("pid count: %d\n", pids_count);
-                        for (int i = 0; i < pids_count; i++){
+                        printf("pid count: %d\n", pids_count);
+                        for (int i = 0; i < pids_count; i++)
                             printf("Pid: %d\n", pids[i]);
-                            printf("Pid2: %d\n",record->pids[i]);
-                        }*/
                     }
                     break;
                 }
