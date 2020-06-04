@@ -7,6 +7,7 @@
 int* pids;
 int pids_count;
 int time_limit_execute = 2;
+int time_limit_comunication = 1;
 
 typedef struct record {
     char* name;
@@ -94,6 +95,9 @@ int execute_pipe(char*** commands, int command_count,
         close(fildes[0][0]);
         dup2(fildes[0][1], 1);
         close(fildes[0][1]);
+        /**
+         * ler do extremo de escrita e enviar o que li para o exec
+         * */
         execvp(commands[0][0], commands[0]);
         _exit(1);
     }
@@ -120,8 +124,26 @@ int execute_pipe(char*** commands, int command_count,
     }
 
     if ((pid = fork()) == 0) {
-        dup2(fildes[i - 1][0], 0);
-        close(fildes[i - 1][0]);
+        //dup2(fildes[i - 1][0], 0);
+        //close(fildes[i - 1][0]);
+
+        char buf[5];
+        int n_bytes;
+        int fildes_aux[2];
+        if(pipe(fildes_aux)==-1){
+            _exit(1);
+        }
+        alarm(time_limit_comunication);
+        while((n_bytes = read(fildes[i-1][0], buf, 5))>0){
+            alarm(0);
+            write(fildes_aux[1], buf, n_bytes);
+            printf("%s",buf);
+        }
+        close(fildes_aux[1]);
+        close(fildes[i-1][0]);
+        dup2(fildes_aux[0],0);
+        close(fildes_aux[0]);
+
         execvp(commands[i][0], commands[i]);
         _exit(1);
     }
