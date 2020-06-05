@@ -4,10 +4,12 @@
 #include <sys/wait.h>
 #include <unistd.h>
 #include <fcntl.h>
-
+//./a.out -e "ls | wc"
+//./a.out -e "grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq | wc -l"
 int* pids;
 int pids_count;
-int time_limit_execute = 2;
+int time_limit_execute = 4;
+int limit_communication_pipe = 2;
 
 typedef struct record {
     char* name;
@@ -115,8 +117,29 @@ int execute_pipe(char*** commands, int command_count,
             close(fildes[i][0]);
             dup2(fildes[i - 1][0], 0);
             close(fildes[i - 1][0]);
+
+            char buf[5];
+            int n_bytes;
+            int fildes_aux[2];
+            if(pipe(fildes_aux)==-1){
+                return -1;
+            }
+
+            alarm(limit_communication_pipe);
+            while((n_bytes = read(0,buf,5))>0){
+                alarm(0);
+                alarm(limit_communication_pipe); //activa o alarme novamente
+                write(fildes_aux[1],buf,n_bytes);
+               // write(1,buf,n_bytes);
+            }
+            alarm(0); // desliga o alarme no final de toda a leitura
+            
+            close(fildes_aux[1]);
+            dup2(fildes_aux[0],0);
+            close(fildes_aux[0]);
             dup2(fildes[i][1], 1);
             close(fildes[i][1]);
+
             execvp(commands[i][0], commands[i]);
             _exit(1);
         }
@@ -127,15 +150,37 @@ int execute_pipe(char*** commands, int command_count,
     if ((pid = fork()) == 0) {
         dup2(fildes[i - 1][0], 0);
         close(fildes[i - 1][0]);
+
+        char buf[5];
+        int n_bytes;
+        int fildes_aux[2];
+        if(pipe(fildes_aux)==-1){
+            return -1;
+        }
+
+        alarm(limit_communication_pipe);
+        //printf("No final: \n");
+        while((n_bytes = read(0,buf,5))>0){
+            alarm(0);
+            alarm(limit_communication_pipe); //activa o alarme novamente
+            write(fildes_aux[1],buf,n_bytes);
+          //  write(1,buf,n_bytes);
+        }
+        alarm(0); // desliga o alarme no final de toda a leitura
+        
+        close(fildes_aux[1]);
+        dup2(fildes_aux[0],0);
+        close(fildes_aux[0]);
+
         execvp(commands[i][0], commands[i]);
         _exit(1);
     }
     pids[i] = pid;  // i == command_count-1
     close(fildes[i][0]);
+    memcpy(*record_pids,pids,command_count*sizeof(int));
     for (int j = 0; j < i; j++) {
         wait(NULL);
     }
-    memcpy(*record_pids,pids,command_count*sizeof(int));
     return 0;
 }
 

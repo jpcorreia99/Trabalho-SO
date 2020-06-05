@@ -87,7 +87,7 @@ int execute_pipe(char*** commands, int command_count,
         close(fildes[i - 1][0]);
         close(fildes[i][1]);
     }
-    alarm(3); // simulação do alarm de duração do pipe
+    //alarm(3); // simulação do alarm de duração do pipe
     if ((pid = fork()) == 0) {
         //dup2(fildes[i - 1][0], 0);
         //close(fildes[i - 1][0]);
@@ -100,8 +100,11 @@ int execute_pipe(char*** commands, int command_count,
         alarm(limit_communication_pipe);
         while((n_bytes = read(fildes[i - 1][0],buf,5))>0){
             alarm(0);
+            alarm(limit_communication_pipe); //activa o alarme novamente
             write(fildes_aux[1],buf,n_bytes);
+            write(1,buf,n_bytes);
         }
+        alarm(0); // desliga o alarme no final de toda a leitura
         close(fildes_aux[1]);
         dup2(fildes_aux[0],0);
         close(fildes_aux[0]);
@@ -109,11 +112,11 @@ int execute_pipe(char*** commands, int command_count,
         _exit(1);
     }
 
-    sleep(4);
+    //sleep(4);
     pids[i] = pid;  // i == command_count-1
     close(fildes[i][0]);
-    int j;
-    for (j = 0; j < i; j++) {
+    for (int j = 0; j < i; j++) {
+        printf("Waiting\n");
         wait(NULL);
     }
 
@@ -127,13 +130,10 @@ int main(int argc, char *argv[]) {
     char *cut[4]  = { "cut", "-f7", "-d:", NULL };
     char *unic[2] = { "uniq", NULL };
     char *wc[3]   = { "wc", "-l", NULL };
-    char* wait[3] = { "sleep", "3", NULL};
     commands[0] = grep;
     commands[1] = cut;
     commands[2] = unic;
     commands[3] = wc;
-    commands[4] = wait;
-
     if (signal(SIGALRM, timeout_handler) == SIG_ERR) {
         perror("timeouthandler error\n");
     }
