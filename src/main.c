@@ -9,7 +9,7 @@
 int* pids;
 int pids_count;
 int time_limit_execute = 4;
-int limit_communication_pipe = 2;
+int time_limit_communication = 2;
 
 typedef struct record {
     char* name;
@@ -125,10 +125,10 @@ int execute_pipe(char*** commands, int command_count,
                 return -1;
             }
 
-            alarm(limit_communication_pipe);
+            alarm(time_limit_communication);
             while((n_bytes = read(0,buf,5))>0){
                 alarm(0);
-                alarm(limit_communication_pipe); //activa o alarme novamente
+                alarm(time_limit_communication); //activa o alarme novamente
                 write(fildes_aux[1],buf,n_bytes);
                // write(1,buf,n_bytes);
             }
@@ -158,11 +158,11 @@ int execute_pipe(char*** commands, int command_count,
             return -1;
         }
 
-        alarm(limit_communication_pipe);
+        alarm(time_limit_communication);
         //printf("No final: \n");
         while((n_bytes = read(0,buf,5))>0){
             alarm(0);
-            alarm(limit_communication_pipe); //activa o alarme novamente
+            alarm(time_limit_communication); //activa o alarme novamente
             write(fildes_aux[1],buf,n_bytes);
           //  write(1,buf,n_bytes);
         }
@@ -376,6 +376,17 @@ int main(int argc, char* argv[]) {
         // int logsfd = open("../documents/logs.txt",O_RDWR,0666);
         if (argv[1][0] == '-') {
             switch (argv[1][1]) {
+                case 'i': {
+                    int new_limit = atoi(argv[2]);
+                    if (new_limit > 0) {
+                        time_limit_communication = new_limit;
+                    } else {
+                        printf("Invalid limit\n");
+                    }
+                    printf("Communication limit: %d\n", time_limit_communication);
+                    break;
+                }
+
                 case 'm': {
                     int new_limit = atoi(argv[2]);
                     if (new_limit > 0) {
@@ -383,9 +394,8 @@ int main(int argc, char* argv[]) {
                     } else {
                         printf("Invalid limit\n");
                     }
-                    printf("Time limit: %d\n", time_limit_execute);
+                    printf("Execution limit: %d\n", time_limit_execute);
                     break;
-                    ;
                 }
                 case 'e': {
                     // Record init
