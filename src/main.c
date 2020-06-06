@@ -197,12 +197,11 @@ void timeout_handler(int signum) {
 
 ssize_t readln(int fd, char* line, size_t size) {
         int i;
-        for (i = 0; read(fd, line + i, 1) && line[i] != '\n' && i < size; i++)
-            ;
+        for (i = 0; read(fd, line + i, 1) && line[i] != '\n' && i < size; i++);
         return i;
-    }
+}
 
-int main(int argc, char* argv[]) {
+int main2(int argc, char* argv[]) {
 
     //int index_fd = open("../files/index.txt", O_CREAT |O_RDWR, 0664);
     //int log_fd = open("../files/log.txt", O_CREAT | O_RDWR, 0664);
@@ -491,3 +490,86 @@ int main(int argc, char* argv[]) {
     wait(NULL);
     return 0;
 }
+
+int process_instruction(char* instruction, int instruction_size){
+    printf("A entrar na process_instructiion\n");
+    printf("Comprimento da instrução: %d\n",strlen(instruction));
+    printf("Intrução: %s\n",instruction);
+    // list of arguments of a given instruction ex: {"-i", "5"}
+    char** array= malloc(sizeof(char*));
+    int i=0;
+
+    char* rest;
+    char* token = strtok_r(instruction," ",&rest);
+    if(token!=NULL && strlen(token)>1){ // nunca deverá ser preciso verificar, mas adicionou-se por uma questão de segurança
+        printf("O primeiro tokenize: %s\n",token);
+        switch (token[1])
+        {
+        case 'e':
+        printf("Resto: %s\n",rest);
+            Record record = malloc(sizeof(Record));
+            record->status = 0;
+            record->pids = NULL;
+            int number_commands;
+            int* size_commands_array;
+            char*** command_matrix = separate_commands(
+                rest, &number_commands, &size_commands_array);
+            for (int i = 0; i < number_commands; i++) {
+                printf("%d, ", size_commands_array[i]);
+            }
+            printf("\n");
+            for (int i = 0; i < number_commands; i++) {
+                for (int j = 0; j < size_commands_array[i]; j++) {
+                    printf("%d %d %s//\n", i, j, command_matrix[i][j]);
+                }
+            }
+
+                if (fork() == 0) {
+                int status;
+                pid_t pid =
+                    execute_pipe(command_matrix, number_commands,
+                                    size_commands_array,&(record->pids));
+                printf("Bigus kekus\n");
+                /*if (waitpid(pid, &status, 0) != -1) {
+                    record->status = 1;
+                }*/
+        
+                //printf("nova tarefa #%i\n", noRecords);
+
+
+                /*printf("pid count: %d\n", pids_count);
+                for (int i = 0; i < pids_count; i++){
+                    printf("Pid: %d\n", pids[i]);
+                    printf("Pid2: %d\n",record->pids[i]);
+                }*/
+            }
+
+            break;
+        
+        default:
+            break;
+        }
+    }
+   /* while(array[i]!=NULL)
+    {
+    array[++i] = strtok(NULL,"/");
+    }*/
+}
+
+int main(){
+    int fifo_fd=-1;
+    while(fifo_fd = open("fifo",O_RDONLY)){ // para ir lendo continuamente
+        printf("\n\nNova instrução\n");
+        printf("fifo is open\n");
+        char buf[1024];
+        //ssize_t bytes_read = readln(fifo_fd, buf, 1024);
+        ssize_t bytes_read = read(fifo_fd, buf, 1024);
+        write(1,buf,bytes_read);
+        buf[bytes_read] = '\0';
+        process_instruction(buf,bytes_read);
+        close(fifo_fd);
+    }
+    return 0;
+}
+
+
