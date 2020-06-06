@@ -491,6 +491,62 @@ int main2(int argc, char* argv[]) {
     return 0;
 }
 
+int execute_task(char* task){
+    printf("Resto: %s\n",task);
+    Record record = malloc(sizeof(Record));
+    record->status = 0;
+    record->pids = NULL;
+    int number_commands;
+    int* size_commands_array;
+    char*** command_matrix = separate_commands(
+        task, &number_commands, &size_commands_array);
+    for (int i = 0; i < number_commands; i++) {
+        printf("%d, ", size_commands_array[i]);
+    }
+    printf("\n");
+    for (int i = 0; i < number_commands; i++) {
+        for (int j = 0; j < size_commands_array[i]; j++) {
+            printf("%d %d %s//\n", i, j, command_matrix[i][j]);
+        }
+    }
+
+        if (fork() == 0) {
+        int status;
+        pid_t pid =
+            execute_pipe(command_matrix, number_commands,
+                            size_commands_array,&(record->pids));
+        printf("Bigus kekus\n");
+        /*if (waitpid(pid, &status, 0) != -1) {
+            record->status = 1;
+        }*/
+
+        //printf("nova tarefa #%i\n", noRecords);
+
+
+        /*printf("pid count: %d\n", pids_count);
+        for (int i = 0; i < pids_count; i++){
+            printf("Pid: %d\n", pids[i]);
+            printf("Pid2: %d\n",record->pids[i]);
+        }*/
+    }
+    return 0;
+}
+
+int change_time_limit_execute(char* limit){
+    long value = strtol(limit,NULL,10); // using base 10
+    time_limit_execute = value;
+    printf("New time limit execute: %d\n",time_limit_execute);
+    return 0;
+}
+
+int change_ime_limit_communication(char* limit){
+    long value = strtol(limit,NULL,10); // using base 10
+    time_limit_communication = value;
+    printf("New time limit communication: %d\n",time_limit_communication);
+    return 0;
+}
+
+
 int process_instruction(char* instruction, int instruction_size){
     printf("A entrar na process_instructiion\n");
     printf("Comprimento da instrução: %d\n",strlen(instruction));
@@ -506,46 +562,13 @@ int process_instruction(char* instruction, int instruction_size){
         switch (token[1])
         {
         case 'e':
-        printf("Resto: %s\n",rest);
-            Record record = malloc(sizeof(Record));
-            record->status = 0;
-            record->pids = NULL;
-            int number_commands;
-            int* size_commands_array;
-            char*** command_matrix = separate_commands(
-                rest, &number_commands, &size_commands_array);
-            for (int i = 0; i < number_commands; i++) {
-                printf("%d, ", size_commands_array[i]);
-            }
-            printf("\n");
-            for (int i = 0; i < number_commands; i++) {
-                for (int j = 0; j < size_commands_array[i]; j++) {
-                    printf("%d %d %s//\n", i, j, command_matrix[i][j]);
-                }
-            }
-
-                if (fork() == 0) {
-                int status;
-                pid_t pid =
-                    execute_pipe(command_matrix, number_commands,
-                                    size_commands_array,&(record->pids));
-                printf("Bigus kekus\n");
-                /*if (waitpid(pid, &status, 0) != -1) {
-                    record->status = 1;
-                }*/
-        
-                //printf("nova tarefa #%i\n", noRecords);
-
-
-                /*printf("pid count: %d\n", pids_count);
-                for (int i = 0; i < pids_count; i++){
-                    printf("Pid: %d\n", pids[i]);
-                    printf("Pid2: %d\n",record->pids[i]);
-                }*/
-            }
-
+            execute_task(rest);
             break;
-        
+        case 'm':
+            change_time_limit_execute(rest);
+            break;
+        case 'i':
+            change_ime_limit_communication(rest);
         default:
             break;
         }
@@ -555,6 +578,8 @@ int process_instruction(char* instruction, int instruction_size){
     array[++i] = strtok(NULL,"/");
     }*/
 }
+
+
 
 int main(){
     int fifo_fd=-1;
