@@ -6,10 +6,15 @@
 #include <fcntl.h>
 //./a.out -e "ls | wc"
 //./a.out -e "grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq | wc -l"
+
+// talvez meter o records como variável global, testar se os limites estão a funcionar
 int* pids;
 int pids_count;
 int time_limit_execute = 4;
 int time_limit_communication = 2;
+
+
+
 
 typedef struct record {
     char* name;
@@ -17,6 +22,9 @@ typedef struct record {
     int * pids;  // toKill
     int pids_count;
 } * Record;
+
+Record records_array[1024];
+int noRecords;
 
 char*** separate_commands(char* str, int* number_commands,
                           int** size_commands_array) {
@@ -89,7 +97,9 @@ int execute_pipe(char*** commands, int command_count,
             _exit(-1);
         }
         pids[0] = pid;  // nota: o fork devolve o pid do filho para o pai
-        //record_pids[0] = pid;  // nota: o fork devolve o pid do filho para o pai
+        (*record_pids)[0] = pid;  // nota: o fork devolve o pid do filho para o pai
+        wait(NULL);
+        alarm(0);
         return 0;
     }
 
@@ -178,7 +188,7 @@ int execute_pipe(char*** commands, int command_count,
     pids[i] = pid;  // i == command_count-1
     close(fildes[i][0]);
     memcpy(*record_pids,pids,command_count*sizeof(int));
-    for (int j = 0; j < i; j++) {
+    for (int j = 0; j < command_count; j++) {
         wait(NULL);
     }
     return 0;
@@ -582,13 +592,18 @@ int process_instruction(char* instruction, int instruction_size){
 
 
 int main(){
-    int fifo_fd=-1;
+    if (signal(SIGALRM, timeout_handler) == SIG_ERR) {
+        perror("timeouthandler error\n");
+    }
+
+    int fifo_fd;
     while(fifo_fd = open("fifo",O_RDONLY)){ // para ir lendo continuamente
         printf("\n\nNova instrução\n");
         printf("fifo is open\n");
         char buf[1024];
         //ssize_t bytes_read = readln(fifo_fd, buf, 1024);
-        ssize_t bytes_read = read(fifo_fd, buf, 1024);
+        ssize_t bytes_read=0;
+        bytes_read = read(fifo_fd, buf, 1024);
         write(1,buf,bytes_read);
         buf[bytes_read] = '\0';
         process_instruction(buf,bytes_read);
