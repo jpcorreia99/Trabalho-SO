@@ -7,13 +7,15 @@
 //./a.out -e "ls | wc"
 //./a.out -e "grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq | wc -l"
 
+// ver porque é que o handler do sig2 não está a dar print
 // talvez meter o records como variável global, testar se os limites estão a funcionar
 int* pids;
 int pids_count;
-int time_limit_execute = 1;
-int time_limit_communication = 100;
+int time_limit_execute = 100;
+int time_limit_communication = 1;
 int forced_termination = 0;
 int timeout_termination = 0;
+int timeout_communication = 0;
 
 
 typedef struct record {
@@ -25,8 +27,8 @@ typedef struct record {
 Record records_array[1024];
 int number_records=0;
 
-
-void timeout_handler(int signum) {
+// para a opção -m
+void timeout_handler(int signum) { 
     for (int i = 0; i < pids_count; i++) {
         printf("Killing process %d due to timeout\n", pids[i]);
         if (pids[i] > 0) {  // evitar kill -1;
@@ -36,6 +38,11 @@ void timeout_handler(int signum) {
     timeout_termination = 1;
 }
 
+void communication_limit_handler(int signum) { 
+    int parent_pid = getppid();
+    kill(parent_pid,SIGUSR2);
+    printf("\n\n***Timeout do -i*****, pid do pai: %d\n\n\n",parent_pid);
+}
 
 void sigchld_handler_parent(int signum){
     printf("O Handler do pai\n");
@@ -44,7 +51,7 @@ void sigchld_handler_parent(int signum){
     if (WIFEXITED(status)){ 
         int s=WEXITSTATUS(status); //wifeexisted- devolve algo !0 se o status tiver vindo de um child process
         printf("status: %d\n",s);
-        printf("O Pid apanhado no pai foi %d\n",pid);
+        printf("O Pid apanhado no / do pai é %d\n",pid);
         int found=0;
         int i;
         for(i=0;i<number_records && !found;i++){
@@ -74,6 +81,17 @@ void sigusr1_handler(int signum){
     }
     forced_termination = 1;
 }
+
+// será usado na opção -i para o pai dos processos matar os filhos todos
+void sigusr2_handler(int signum){
+    printf("\n\n**sigusr2 handler\n\n\n");
+    for(int i=0; i<pids_count;i++){
+        printf("A terminar o processo com U pid %d\n",pids[i]);
+        kill(pids[i],SIGKILL);
+    }
+    timeout_communication = 1;
+}
+
 
 
 
@@ -132,7 +150,6 @@ char*** separate_commands(char* str, int* number_commands,
 
 int execute_pipe(char*** commands, int command_count,
                  int* size_commands_array) {
-
     pid_t pid;
     if((pid = fork())==0){
         if (signal(SIGCHLD, sigchld_handler_child) == SIG_ERR){
@@ -140,12 +157,12 @@ int execute_pipe(char*** commands, int command_count,
         }
 
        alarm(time_limit_execute);
-
         int pid;
         pids_count = command_count;
         pids = malloc(sizeof(int) * pids_count);
         memset(pids,-1,pids_count);
         if (command_count == 1) {
+            printf("2\n");
             if ((pid = fork()) == 0) {
                 execvp(commands[0][0], commands[0]);
                 _exit(-1);
@@ -168,13 +185,15 @@ int execute_pipe(char*** commands, int command_count,
             }
             close(fildes[0][1]);
             pids[0] = pid;
-
             int i=1;
             for (i = 1; i < command_count - 1; i++) {
                 if (pipe(fildes[i]) == -1) {
                     return -1;
                 }
                 if ((pid = fork()) == 0) {
+                    if (signal(SIGALRM, communication_limit_handler) == SIG_ERR){
+                        perror("sigchild son error\n");
+                    }
                     close(fildes[i][0]);
                     dup2(fildes[i - 1][0], 0);
                     close(fildes[i - 1][0]);
@@ -209,6 +228,9 @@ int execute_pipe(char*** commands, int command_count,
                 close(fildes[i][1]);
             }
             if ((pid = fork()) == 0) {
+                if (signal(SIGALRM, communication_limit_handler) == SIG_ERR){
+                    perror("sigchild son error\n");
+                }
                 dup2(fildes[i - 1][0], 0);
                 close(fildes[i - 1][0]);
 
@@ -220,8 +242,9 @@ int execute_pipe(char*** commands, int command_count,
                 }
 
                 alarm(time_limit_communication);
-                //printf("No final: \n");
+
                 while((n_bytes = read(0,buf,5))>0){
+                    sleep(5);
                     alarm(time_limit_communication); //activa o alarme novamente
                     write(fildes_aux[1],buf,n_bytes);
                 //  write(1,buf,n_bytes);
@@ -236,7 +259,7 @@ int execute_pipe(char*** commands, int command_count,
                 _exit(1);
             }
             pids[i] = pid;  // i == command_count-1
-            close(fildes[i][0]);
+            close(fildes[i-1][0]);
             for (int j = 0; j < command_count; j++) {
                 wait(NULL);
             }
@@ -249,6 +272,8 @@ int execute_pipe(char*** commands, int command_count,
             _exit(2);
         }else if(timeout_termination){
             _exit(3);
+        }else if(timeout_communication){
+            _exit(4);
         }else{
             _exit(1); // exit code quando corre tudo bem
         }
@@ -619,6 +644,9 @@ void show_history(){
             case 3:
                 status = "Terminada por máximo de tempo de execução";
                 break;
+            case 4:
+                status = "Terminado por máximo de inatividade de comunicação";
+                break;
             default:
                 status = "Status ainda não definido";
         }
@@ -670,20 +698,23 @@ int process_instruction(char* instruction, int instruction_size){
 
 int main(){
     if (signal(SIGALRM, timeout_handler) == SIG_ERR) {
-        perror("timeouthandler error\n");
+        perror("SIGARLM error\n");
     }
 
     if (signal(SIGCHLD, sigchld_handler_parent) == SIG_ERR){
-        perror("sigchildpai error\n");
-    }
-
-    if (signal(SIGCLD, sigchld_handler_parent) == SIG_ERR){
-        perror("sigchld son error\n");
+        perror("SIGCHLD parent error\n");
     }
     
     if (signal(SIGUSR1, sigusr1_handler) == SIG_ERR){
         perror("SIGUSR1 error\n");
     }
+
+    if (signal(SIGUSR2, sigusr2_handler) == SIG_ERR){
+        perror("SIGUSR2 error\n");
+    }
+
+
+
 
     int fifo_fd;
     while(fifo_fd = open("fifo",O_RDONLY)){ // para ir lendo continuamente
