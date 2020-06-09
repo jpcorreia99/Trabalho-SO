@@ -26,6 +26,23 @@ bool is_limit_valid(char* s){
     return (new_limit >0);*/
     char *temp;
     long value = strtol(s,&temp,10); // using base 10
+    if (temp != s && *temp == '\0' && value >=0)
+    {
+       return true;
+    }
+    else
+    {
+       return false;
+    }
+}
+
+
+bool is_task_number_valid(char* s){
+    /*int new_limit = atoi(s);
+    printf("%d\n",new_limit);
+    return (new_limit >0);*/
+    char *temp;
+    long value = strtol(s,&temp,10); // using base 10
     if (temp != s && *temp == '\0' && value >=1)
     {
        return true;
@@ -86,7 +103,7 @@ bool comando_valido(int numero_componentes, char** comando){
                 return true;
             }else if(strcmp(comando[0],"-t")==0){
                 if(numero_componentes==2){
-                    if(!is_limit_valid(comando[1])){
+                    if(!is_task_number_valid(comando[1])){
                         write(1,"Número inválido\n",strlen("Número inválido\n"));
                         return false;
                     }
@@ -95,6 +112,13 @@ bool comando_valido(int numero_componentes, char** comando){
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
                     return false;
                 }
+            }else if(strcmp(comando[0],"-h")==0){
+                if(numero_componentes>1){
+                    write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
+                    return false;
+                }else{
+                    return true;
+                } 
             }else{
                 write(1,"Comando inválido\n",strlen("Comando inválido\n"));
                 return false;
@@ -106,6 +130,27 @@ bool comando_valido(int numero_componentes, char** comando){
 }
 
 
+void show_help(){
+    write(1,"Adjuda:\n",strlen("Adjuda:\n"));
+    char* string = "\t-i <secs>: define o tempo de inactividade de comunicação num pipe anónimo\n";
+    write(1,string,strlen(string));
+
+    string = "\t-m <secs>: define o tempo máximo de execução de uma tarefa\n";
+    write(1,string,strlen(string));
+
+    string = "\t-e <tarefa>: executa uma tarefa\n";
+    write(1,string,strlen(string));
+
+    string = "\t-l: lista as tarefas em execução\n";
+    write(1,string,strlen(string));
+
+    string = "\t-t <número tarefa>: termina a execução de uma tarefa\n";
+    write(1,string,strlen(string));
+
+    string = "\t-r: Lista as tarefas terminadas assim como o estado em que terminou\n";
+    write(1,string,strlen(string));
+}
+
 
 int main(int argc, char* argv[]){
     if(argc>3){
@@ -114,43 +159,28 @@ int main(int argc, char* argv[]){
     }
 
     if(argc>1){
-    char** comando = argv+1;
-    int numero_componentes = argc-1;
-    printf("CHEGOU AQUI1\n");
-    if(comando_valido(numero_componentes,comando)){
+        char** comando = argv+1;
+        int numero_componentes = argc-1;
+        if(comando_valido(numero_componentes,comando)){
+            if(strcmp(comando[0],"-h")!=0){
+                char* comando_concatenado =  concatena_comando(numero_componentes,comando);
+                printf("%s\n",comando_concatenado);
 
-        char* comando_concatenado =  concatena_comando(numero_componentes,comando);
-        printf("%s\n",comando_concatenado);
-
-        int fd;
-        //write(1,"Opening fifo\n",strlen("Opening fifo\n"));
-        if((fd = open("fifo",O_WRONLY))<0){
-            perror("open");
-            return 1;
-        }
-        //write(1,"Open is done\n",strlen("Open is done\n"));
-        if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
-            perror("Write");
-            return 1;
-        }
-    }else return 1;
-    /*
-
-        int fd;
-        if((fd = open("my_fifo",O_RDONLY))<0){
-            perror("open");
-            exit(1);
-        }
-        printf("Open is done\n");
-
-        char buf[100];
-        int bytes_read=0;
-        while(bytes_read = read(fd,buf,100)){ 
-            if(write(1,buf,bytes_read)<0){
-                perror("Write");
-                exit(1);
+                int fd;
+                //write(1,"Opening fifo\n",strlen("Opening fifo\n"));
+                if((fd = open("fifo",O_WRONLY))<0){
+                    perror("open");
+                    return 1;
+                }
+                //write(1,"Open is done\n",strlen("Open is done\n"));
+                if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
+                    perror("Write");
+                    return 1;
+                }
+            }else{
+                show_help();
             }
-        }*/
+        }
     }else{
         printf("Aqui colocar o prompt\n");
     }

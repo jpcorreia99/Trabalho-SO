@@ -207,12 +207,11 @@ int execute_pipe(char*** commands, int command_count,
 
                     alarm(time_limit_communication);
                     while((n_bytes = read(0,buf,5))>0){
-                        alarm(0);
                         alarm(time_limit_communication); //activa o alarme novamente
                         write(fildes_aux[1],buf,n_bytes);
                     // write(1,buf,n_bytes);
                     }
-                    alarm(0); // desliga o alarme no final de toda a leitura
+                    //alarm(0); // desliga o alarme no final de toda a leitura
                     
                     close(fildes_aux[1]);
                     dup2(fildes_aux[0],0);
@@ -244,12 +243,11 @@ int execute_pipe(char*** commands, int command_count,
                 alarm(time_limit_communication);
 
                 while((n_bytes = read(0,buf,5))>0){
-                    sleep(5);
                     alarm(time_limit_communication); //activa o alarme novamente
                     write(fildes_aux[1],buf,n_bytes);
                 //  write(1,buf,n_bytes);
                 }
-                alarm(0); // desliga o alarme no final de toda a leitura
+                //alarm(0); // desliga o alarme no final de toda a leitura
                 
                 close(fildes_aux[1]);
                 dup2(fildes_aux[0],0);
@@ -281,290 +279,10 @@ int execute_pipe(char*** commands, int command_count,
     return pid;
 }
 
-
-
-
-
 ssize_t readln(int fd, char* line, size_t size) {
         int i;
         for (i = 0; read(fd, line + i, 1) && line[i] != '\n' && i < size; i++);
         return i;
-}
-
-int main2(int argc, char* argv[]) {
-
-    //int index_fd = open("../files/index.txt", O_CREAT |O_RDWR, 0664);
-    //int log_fd = open("../files/log.txt", O_CREAT | O_RDWR, 0664);
-
-    // dup2(log_fd,1);
-    /*stdout*/
-	//close(log_fd);
-    int inicio,fim;
-    inicio = 0;
-    /*if(argc<3){
-        printf("Not enough arguments\n");
-        return -1;
-    }*/
-
-    Record records_array[1024];
-    int noRecords;
-
-    if (signal(SIGALRM, timeout_handler) == SIG_ERR) {
-        perror("timeouthandler error\n");
-    }
-
-    if (argc == 1) {
-        int in = 1;
-        int _argc = 0;
-        char* buf;
-        //char buf[1024];
-        //char* aux;
-        char** _argv;
-        noRecords = 0;
-        while (in) {
-            _argc = 0;
-            buf = realloc(buf,1024*sizeof(char));
-            write(0, "argus$ ", strlen("argus$ "));
-            ssize_t size = readln(0, buf, 1024);
-            buf[size] = '\0';
-            //printf("buf: %s\n", buf);
-            //_argv = (char**)realloc(_argv, 2 * sizeof(char*));
-            //_argv = (char**)realloc(_argv, count * sizeof(char*));
-
-            /*int count = 0;
-            aux = malloc(sizeof(buf));
-            strcpy(aux, buf);
-            
-            while((aux = strchr(aux, ' ')) != NULL){
-                count++;
-                aux++;
-            }
-            printf("count: %i\n",count);*/
-            _argv = (char**)realloc(_argv, 2 * sizeof(char*));
-            _argv[0] = strtok(buf, " ");
-            _argv[1] = strtok(NULL, "\0");
-            _argc = 2;
-
-            for (int ai = 0; ai < _argc; ai++) {
-                printf("_argv[%i] = %s\n", ai, _argv[ai]);
-            }
-
-            //retirar asspas
-            if (strcmp(_argv[0], "tempo-inactividade") == 0) {
-                int new_limit = atoi(_argv[1]);
-                if (new_limit > 0) {
-                    time_limit_execute = new_limit;
-                } else {
-                    printf("Invalid limit\n");
-                }
-                printf("Time limit: %d\n", time_limit_execute);
-            } else if (strcmp(_argv[0], "executar") == 0) {
-                // Record init
-                Record record = malloc(sizeof(Record));
-                record->name = realloc(record->name, sizeof(_argv[1]));
-                strcpy(record->name, _argv[1]);
-                record->status = 0;
-                records_array[noRecords++] = record;
-                //
-                int number_commands;
-                int* size_commands_array;
-                char*** command_matrix = separate_commands(
-                    _argv[1], &number_commands, &size_commands_array);
-
-                int status;
-                if (fork() == 0) {
-                    pid_t pid = execute_pipe(command_matrix, number_commands,
-                                             size_commands_array);
-                    //printf("pid count: %d\n", pids_count);
-                    //for (int i = 0; i < pids_count; i++)
-                        //printf("Pid: %d\n",record->pids[i]);
-                    printf("nova tarefa #%i\n", noRecords);
-                    //sleep(1000);
-                    _exit(1);
-                }else{
-                    //signal(SIG_CHILD,update_status);
-                    waitpid(-1, &status, WNOHANG);
-                    if(WIFEXITED(status)){
-                        record->status = 1;
-                    }
-                }
-            } else if (strcmp(_argv[0], "historico") == 0) {
-                //printf("No Records: %d\n",noRecords);
-                for (int index = 0; index < noRecords; index++) {
-                    switch (records_array[index]->status) {
-                        case 1: {
-                            printf("#%i, concluida: %s\n", index + 1,
-                                   records_array[index]->name);
-                            break;
-                        }
-                        case 2: {
-                            printf("#%i, max inactividade: %s\n", index + 1,
-                                   records_array[index]->name);
-                            break;
-                        }
-                        case 3:{
-                            printf("#%i, max execucao: %s\n", index + 1,
-                                   records_array[index]->name);
-                            break;
-                        }
-                        case 4:{
-                            printf("#%i, interrompido: %s\n", index + 1,
-                                   records_array[index]->name);
-                            break;
-                        }
-                    }
-                }
-            } else if (strcmp(_argv[0], "listar") == 0) {
-                for (int index2 = 0; index2 < noRecords; index2++) {
-                    if (records_array[index2]->status == 0)
-                        printf("#%i: %s\n", index2 + 1,
-                               records_array[index2]->name);
-                }
-            } else if (strcmp(_argv[0], "terminar") == 0) {
-                /*if(atoi(_argv[1])-1 < noRecords){
-                    Record record = records_array[atoi(_argv[1])-1];
-                    for (int i = 0; i < record->pids_count; i++) {
-                        if (record->pids[i] > 0) {
-                            kill(record->pids[i], SIGKILL);
-                        }
-                    }
-                    record->status = 4;
-                }*/    
-            } else if (strcmp(_argv[0], "ajuda") == 0) {
-                write(1, "  tempo-inactividade segs\n",
-                      strlen("  tempo-inactividade segs\n"));
-                write(1, "  tempo-execucao segs\n",
-                      strlen("  tempo-execucao segs\n"));
-                write(1, "  executar p1 | p2 ... | pn\n",
-                      strlen("  executar p1 | p2 ... | pn\n"));
-                write(1, "  listar\n", strlen("  listar\n"));
-                write(1, "  terminar n\n", strlen("  terminar n\n"));
-                write(1, "  historico\n", strlen("  historico\n"));
-                write(1, "  ajuda\n", strlen("  ajuda\n"));
-            } else if (strcmp(_argv[0], "quit") == 0 ||
-                       strcmp(_argv[0], "q") == 0)
-                in = 0;
-        }
-        free(buf);
-        //free(aux);
-        free(_argv);
-    } else {
-        // int logsfd = open("../documents/logs.txt",O_RDWR,0666);
-        if (argv[1][0] == '-') {
-            switch (argv[1][1]) {
-                case 'i': {
-                    int new_limit = atoi(argv[2]);
-                    if (new_limit > 0) {
-                        time_limit_communication = new_limit;
-                    } else {
-                        printf("Invalid limit\n");
-                    }
-                    printf("Communication limit: %d\n", time_limit_communication);
-                    break;
-                }
-
-                case 'm': {
-                    int new_limit = atoi(argv[2]);
-                    if (new_limit > 0) {
-                        time_limit_execute = new_limit;
-                    } else {
-                        printf("Invalid limit\n");
-                    }
-                    printf("Execution limit: %d\n", time_limit_execute);
-                    break;
-                }
-                case 'e': {
-                    // Record init
-                    Record record = malloc(sizeof(Record));
-                    record->status = 0;
-                    records_array[noRecords++] = record;
-                    int number_commands;
-                    int* size_commands_array;
-                    printf("Argv[2]: %s\n", argv[2]);
-                    char*** command_matrix = separate_commands(
-                        argv[2], &number_commands,&size_commands_array);
-                    for (int i = 0; i < number_commands; i++) {
-                        printf("%d, ", size_commands_array[i]);
-                    }
-                    printf("\n");
-                    for (int i = 0; i < number_commands; i++) {
-                        for (int j = 0; j < size_commands_array[i]; j++) {
-                            printf("%d %d %s//\n", i, j, command_matrix[i][j]);
-                        }
-                    }
-
-                    if (fork() == 0) {
-                        int status;
-                        pid_t pid =
-                            execute_pipe(command_matrix, number_commands,
-                                         size_commands_array);
-                        if (waitpid(pid, &status, 0) != -1) {
-                            record->status = 1;
-                        }
-                
-                        printf("nova tarefa #%i\n", noRecords);
-
-
-                        /*printf("pid count: %d\n", pids_count);
-                        for (int i = 0; i < pids_count; i++){
-                            printf("Pid: %d\n", pids[i]);
-                            printf("Pid2: %d\n",record->pids[i]);
-                        }*/
-                    }
-                    break;
-                }
-                case 'r': {
-                    for (int index = 0; index < noRecords; index++) {
-                        switch (records_array[index]->status)
-                        case 1: {
-                            printf("#%i, concluida: %s", index + 1,
-                                   records_array[index]->name);
-                            break;
-                        }
-                        case 2: {
-                            printf("#%i, max inactividade: %s", index + 1,
-                                   records_array[index]->name);
-                            break;
-                        }
-                    }
-                    break;
-                }
-                case 'l': {
-                    for (int index2 = 0; index2 < noRecords; index2++) {
-                        if (!records_array[index2]->status)
-                            printf("#%i: %s", index2 + 1,
-                                   records_array[index2]->name);
-                    }
-                    break;
-                }
-                case 'k': {
-                    /*if(atoi(argv[1]-1) < noRecords){
-                    Record record = records_array[atoi(argv[1]-1)];
-                    for (int i = 0; i < pids_count; i++) {
-                            if (pids[i] > 0) {  // evitar kill -1;23
-                                kill(pids[i], SIGKILL);
-                            }
-                        }
-                    }*/
-                }
-                case 'h': {
-                    write(1, "  tempo-inactividade segs\n",
-                      strlen("  tempo-inactividade segs\n"));
-                    write(1, "  tempo-execucao segs\n",
-                      strlen("  tempo-execucao segs\n"));
-                    write(1, "  executar p1 | p2 ... | pn",
-                      strlen("  executar p1 | p2 ... | pn"));
-                    write(1, "  listar\n", strlen("  listar\n"));
-                    write(1, "  terminar n\n", strlen("  terminar n\n"));
-                    write(1, "  historico\n", strlen("  historico\n"));
-                    write(1, "  ajuda\n", strlen("  ajuda\n"));
-                    break;
-                }
-            }
-        }
-    }
-    wait(NULL);
-    return 0;
 }
 
 int execute_task(char* task){
@@ -626,6 +344,15 @@ int change_ime_limit_communication(char* limit){
     return 0;
 }
 
+void show_current_tasks(){
+        printf("Tarefas em execução:\n");
+    for(int i=0;i<number_records;i++){
+        if(records_array[i]->status==0){
+            printf("Tarefa #%d: %s\n",i,records_array[i]->name);
+        }
+    }
+}
+
 void show_history(){
     printf("Histórico:\n");
     for(int i=0;i<number_records;i++){
@@ -675,6 +402,9 @@ int process_instruction(char* instruction, int instruction_size){
         case 'm':
             change_time_limit_execute(rest);
             break;
+        case 'l':
+            show_current_tasks();
+            break;
         case 'i':
             change_ime_limit_communication(rest);
             break;
@@ -683,6 +413,7 @@ int process_instruction(char* instruction, int instruction_size){
             break;
         case 't':
             terminate_task(rest);
+            break;
         default:
             break;
         }
@@ -723,9 +454,12 @@ int main(){
         char buf[1024];
         //ssize_t bytes_read = readln(fifo_fd, buf, 1024);
         ssize_t bytes_read=0;
-        bytes_read = read(fifo_fd, buf, 1024);
-        write(1,buf,bytes_read);
-        buf[bytes_read] = '\0';
+        while(bytes_read = read(fifo_fd, buf+bytes_read, 1024)){
+            write(1,buf,bytes_read);
+            buf[bytes_read] = '\0';
+        }
+
+
         process_instruction(buf,bytes_read);
         close(fifo_fd);
     }
