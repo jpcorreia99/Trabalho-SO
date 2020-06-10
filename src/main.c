@@ -349,7 +349,7 @@ void show_current_tasks(){
         printf("Tarefas em execução:\n");
     for(int i=0;i<number_records;i++){
         if(records_array[i]->status==0){
-            printf("Tarefa #%d: %s\n",i,records_array[i]->name);
+            printf("Tarefa #%d: %s\n",i+1,records_array[i]->name);
         }
     }
 }
@@ -379,7 +379,7 @@ void show_history(){
                 status = "Status ainda não definido";
         }
 
-        printf("Tarefa: %d, %s, status: %s\n",i,records_array[i]->name,status);
+        printf("Tarefa: %d, %s, status: %s\n",i+1,records_array[i]->name,status);
     }
 }
 
@@ -448,7 +448,8 @@ int main(){
         printf("fifo is open\n");
         char buf[1024];
         //ssize_t bytes_read = readln(fifo_fd, buf, 1024);
-        ssize_t bytes_read=readln(fifo_fd,buf,1024);
+        //ssize_t bytes_read=readln(fifo_fd,buf,1024);
+        int bytes_read =read(fifo_fd,buf,1024);
         buf[bytes_read] = '\0';
         printf("acabou a leitura\n");
 

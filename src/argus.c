@@ -274,6 +274,14 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
+
+    int fd;
+    if((fd = open("fifo",O_WRONLY))<0){
+        perror("open");
+        return 1;
+    }
+    write(1,"Open is done\n",strlen("Open is done\n"));
+
     if(argc>1){
         char** comando = argv+1;
         int numero_componentes = argc-1;
@@ -282,18 +290,11 @@ int main(int argc, char* argv[]){
                 char* comando_concatenado =  concatena_comando(comando, numero_componentes);
                 printf("%s\n",comando_concatenado);
 
-                int fd;
-                //write(1,"Opening fifo\n",strlen("Opening fifo\n"));
-                if((fd = open("fifo",O_WRONLY))<0){
-                    perror("open");
-                    return 1;
-                }
                 //write(1,"Open is done\n",strlen("Open is done\n"));
                 if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
                     perror("Write");
                     return 1;
                 }
-                close(fd);
             }else{
                 show_help();
             }
@@ -319,22 +320,16 @@ int main(int argc, char* argv[]){
                     char* comando_concatenado =  concatena_comando(separated_line,number_of_sublines);
                     printf("Comando concatenado: %s\n",comando_concatenado);
 
-                    int fd;
-                    if((fd = open("fifo",O_WRONLY))<0){
-                        perror("open");
-                        return 1;
-                    }
-                    write(1,"Open is done\n",strlen("Open is done\n"));
                     if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
                         perror("Write");
                         return 1;
                     }
-                    close(fd);
                 }
             }else{
                 printf("Falhou a validação\n");
             }
         }
     }
+    close(fd);
     return 0;
 }
