@@ -27,6 +27,7 @@ typedef struct record {
 Record records_array[1024];
 int number_records=0;
 
+
 // para a opção -m
 void timeout_handler(int signum) { 
     for (int i = 0; i < pids_count; i++) {
@@ -93,7 +94,12 @@ void sigusr2_handler(int signum){
 }
 
 
-
+ssize_t readln(int fd, char* line, size_t size) {
+    int i;
+    printf(".");
+    for (i = 0; read(fd, line + i, 1) && printf(".") && line[i] != '\n' && i < size; i++);
+    return i;
+}
 
 char*** separate_commands(char* str, int* number_commands,
                           int** size_commands_array) {
@@ -279,11 +285,6 @@ int execute_pipe(char*** commands, int command_count,
     return pid;
 }
 
-ssize_t readln(int fd, char* line, size_t size) {
-        int i;
-        for (i = 0; read(fd, line + i, 1) && line[i] != '\n' && i < size; i++);
-        return i;
-}
 
 int execute_task(char* task){
     printf("Resto: %s\n",task);
@@ -386,8 +387,6 @@ int process_instruction(char* instruction, int instruction_size){
     printf("A entrar na process_instructiion\n");
     printf("Comprimento da instrução: %d\n",strlen(instruction));
     printf("Intrução: %s\n",instruction);
-    // list of arguments of a given instruction ex: {"-i", "5"}
-    char** array= malloc(sizeof(char*));
     int i=0;
 
     char* rest;
@@ -418,10 +417,6 @@ int process_instruction(char* instruction, int instruction_size){
             break;
         }
     }
-   /* while(array[i]!=NULL)
-    {
-    array[++i] = strtok(NULL,"/");
-    }*/
     return 0;
 }
 
@@ -453,12 +448,9 @@ int main(){
         printf("fifo is open\n");
         char buf[1024];
         //ssize_t bytes_read = readln(fifo_fd, buf, 1024);
-        ssize_t bytes_read=0;
-        while(bytes_read = read(fifo_fd, buf+bytes_read, 1024)){
-            write(1,buf,bytes_read);
-            buf[bytes_read] = '\0';
-        }
-
+        ssize_t bytes_read=readln(fifo_fd,buf,1024);
+        buf[bytes_read] = '\0';
+        printf("acabou a leitura\n");
 
         process_instruction(buf,bytes_read);
         close(fifo_fd);
