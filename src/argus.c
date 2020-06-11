@@ -213,22 +213,25 @@ bool valid_comand_prompt(char** command, int number_of_components){
 
 void show_help(){
     write(1,"Adjuda:\n",strlen("Adjuda:\n"));
-    char* string = "\t-i <secs>: define o tempo de inactividade de comunicação num pipe anónimo\n";
+    char* string = "\t-i <secs>: Define o tempo de inactividade de comunicação num pipe anónimo\n";
     write(1,string,strlen(string));
 
     string = "\t-m <secs>: define o tempo máximo de execução de uma tarefa\n";
     write(1,string,strlen(string));
 
-    string = "\t-e <tarefa>: executa uma tarefa\n";
+    string = "\t-e <tarefa>: Executa uma tarefa\n";
     write(1,string,strlen(string));
 
-    string = "\t-l: lista as tarefas em execução\n";
+    string = "\t-l: Lista as tarefas em execução\n";
     write(1,string,strlen(string));
 
-    string = "\t-t <número tarefa>: termina a execução de uma tarefa\n";
+    string = "\t-t <número tarefa>: Termina a execução de uma tarefa\n";
     write(1,string,strlen(string));
 
     string = "\t-r: Lista as tarefas terminadas assim como o estado em que terminou\n";
+    write(1,string,strlen(string));
+
+    string = "\t-h: Apresenta o manual de utilização\n";
     write(1,string,strlen(string));
 }
 
@@ -236,25 +239,31 @@ void show_help(){
 void show_help_prompt(){
 
     write(1,"Adjuda:\n",strlen("Adjuda:\n"));
-    char* string = "\t-i <secs>: define o tempo de inactividade de comunicação num pipe anónimo\n";
+    char* string = "\ttempo-inactividade <secs>: Define o tempo de inactividade de comunicação num pipe anónimo\n";
     write(1,string,strlen(string));
 
-    string = "\t-m <secs>: define o tempo máximo de execução de uma tarefa\n";
+    string = "\ttempo-execucao <secs>: Define o tempo máximo de execução de uma tarefa\n";
     write(1,string,strlen(string));
 
-    string = "\t-e <tarefa>: executa uma tarefa\n";
+    string = "\texecutar <tarefa>: Executa uma tarefa\n";
     write(1,string,strlen(string));
 
-    string = "\t-l: lista as tarefas em execução\n";
+    string = "\tlistar: Lista as tarefas em execução\n";
     write(1,string,strlen(string));
 
-    string = "\t-t <número tarefa>: termina a execução de uma tarefa\n";
+    string = "\tterminar <número tarefa>: Termina a execução de uma tarefa\n";
     write(1,string,strlen(string));
 
-    string = "\t-r: Lista as tarefas terminadas assim como o estado em que terminou\n";
+    string = "\thistorico: Lista as tarefas terminadas assim como o estado em que terminou\n";
     write(1,string,strlen(string));
-   // printf("ĩh3ripuqh\n");
-    string = "\tNOTA: os comandos quando se usa a aplicação através da shell também se aplicam à utilização com prompt. Tanto -e ls | wc como argus executa ls | wc são válidos\n";
+
+    string = "\tsair: Fecha o cliente\n";
+    write(1,string,strlen(string));
+    
+    string = "\tajuda: Apresenta o manual de utilização\n";
+    write(1,string,strlen(string));
+
+    string = "\tNOTA: Os comandos quando se usa a aplicação através da shell também se aplicam à utilização com prompt. Tanto -e ls | wc como argus executa ls | wc são válidos\n";
     write(1,string,strlen(string));
 }
 
