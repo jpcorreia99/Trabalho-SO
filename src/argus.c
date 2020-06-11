@@ -8,11 +8,13 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include <readline/readline.h> // a apagar quando readLn estiver implementado
+/*#include <readline/readline.h> // a apagar quando readLn estiver implementado
 #include <readline/readline.h>
-#include <readline/history.h>
+#include <readline/history.h>*/
 
-//gcc -lreadline argus.c 
+//gcc -o smecep -lreadline argus.c
+
+//acabar de resolver os memory leaks
 
 ssize_t readln(int fd, char* line, size_t size) {
         int i;
@@ -62,11 +64,9 @@ bool is_task_number_valid(char* s){
 
 char* concatena_comando(char** comando,int numero_componentes){
     if(numero_componentes==2){
-        int size_string_concated = strlen(comando[0]) + 1 + strlen(comando[1]);
+        int size_string_concated = strlen(comando[0]) + 2 + strlen(comando[1]);
         char *jointCommand = malloc(sizeof(char)* size_string_concated);
-        strcpy(jointCommand,comando[0]);
-        strcat(jointCommand, " ");
-        strcat(jointCommand, comando[1]);
+        snprintf(jointCommand, size_string_concated, "%s %s", comando[0], comando[1]);
         return jointCommand;
     }else{
         return strdup(comando[0]);
@@ -231,13 +231,14 @@ void show_help(){
 char** separate_line(char* line_to_separate, int* number_of_sublines){
     char* rest;
     char* token = strtok_r(line_to_separate," ",&rest);
-    char** res = malloc(sizeof(char*)*50);
+    char** res = malloc(sizeof(char*)*1);
     *number_of_sublines=0;
     if(token){
         //special case of execute
         if((strcmp(token,"executar")==0) || strcmp(token,"-e")==0 ){
-            res[0] = "-e";
+            res[0] = strdup("-e");
             if(rest){
+                res = realloc(res,sizeof(char*)*2);
                 res[1] = strdup(rest);
                 *number_of_sublines=2;
             }else{
@@ -261,6 +262,7 @@ char** separate_line(char* line_to_separate, int* number_of_sublines){
         }
         *number_of_sublines=1;
         while(token = strtok_r(NULL, " ",&rest)){
+            res = realloc(res,sizeof(char*)*((*number_of_sublines)+1));
             res[(*number_of_sublines)] = strdup(token);
             (*number_of_sublines)++;
         }
@@ -286,8 +288,12 @@ int main(int argc, char* argv[]){
         char** comando = argv+1;
         int numero_componentes = argc-1;
         if(comando_valido(comando, numero_componentes)){
+            printf("Comando válido\n");
             if(strcmp(comando[0],"-h")!=0){
+                printf("1\n");
                 char* comando_concatenado =  concatena_comando(comando, numero_componentes);
+                printf("2\n");
+                printf("Tamanho da string %d\n",strlen(comando_concatenado));
                 printf("%s\n",comando_concatenado);
 
                 //write(1,"Open is done\n",strlen("Open is done\n"));
@@ -295,39 +301,52 @@ int main(int argc, char* argv[]){
                     perror("Write");
                     return 1;
                 }
+                printf("3\n");
+                free(comando_concatenado);
             }else{
                 show_help();
             }
+            
         }
     }else{
         while(1){
             write(1,"Argus$: ",strlen("Argus$: "));
-            char* line = readline("");
+           // char* line = readline("");
+            char line[1024];
+            int n_bytes = readln(1,line,1024);
+            line[n_bytes] = '\0';
+
             write(1,line, strlen(line));
             printf("\n");
             int number_of_sublines=0;
             char** separated_line = separate_line(line,&number_of_sublines);
-            for(int i =0;i<number_of_sublines;i++){
+            /*for(int i =0;i<number_of_sublines;i++){
                 printf("Separated lines[%d]: %s\n",i,separated_line[i]);
             }
-            printf("Number of sublines: %d\n",number_of_sublines);
+            printf("Number of sublines: %d\n",number_of_sublines);*/
             if(valid_comand_prompt(separated_line,number_of_sublines)){
                 if(strcmp(separated_line[0],"sair")==0){
+                    free(separated_line[0]);
+                    free(separated_line);
                     break;
                 }else if(strcmp(separated_line[0],"-h")==0){
                     show_help();
                 }else{
                     char* comando_concatenado =  concatena_comando(separated_line,number_of_sublines);
-                    printf("Comando concatenado: %s\n",comando_concatenado);
-
                     if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
                         perror("Write");
                         return 1;
                     }
+                    free(comando_concatenado);
                 }
             }else{
                 printf("Falhou a validação\n");
             }
+            printf("%d\n",number_of_sublines);
+            for(int i =0;i<number_of_sublines;i++){
+                free(separated_line[i]);
+            }
+            free(separated_line);
         }
     }
     close(fd);
