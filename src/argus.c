@@ -14,8 +14,9 @@
 
 //gcc -o smecep -lreadline argus.c
 
-//acabar de resolver os memory leaks
+//mudar o handler do sigchl pequeno para não ser o ignora mas simplesmente dar reset ao comportamento
 
+// acabar de criar a ajuda para o prompt e verificar que um comando não existe
 ssize_t readln(int fd, char* line, size_t size) {
         int i;
         for (i = 0; read(fd, line + i, 1) && line[i] != '\n' && i < size; i++)
@@ -76,7 +77,7 @@ char* concatena_comando(char** comando,int numero_componentes){
 
 
 bool comando_valido(char** comando, int numero_componentes){
-    if(numero_componentes>= 1 && numero_componentes <=2){
+    if(numero_componentes>= 1){
             if(strcmp(comando[0], "-m")==0 || strcmp(comando[0],"-i")==0){ // adicionar aqui tempo-inactividade && tempo-execucao
                 if(numero_componentes==2){
                     if(!is_limit_valid(comando[1])){
@@ -84,11 +85,13 @@ bool comando_valido(char** comando, int numero_componentes){
                         return false;
                     }
                     return true;
-                }else{
+                }else if (numero_componentes == 1){
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
                     return false;
+                }else{
+                    write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
+                    return false;
                 }
-                return true;
             }else if(strcmp(comando[0],"-e")==0){
                 if(numero_componentes==1){
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
@@ -114,8 +117,11 @@ bool comando_valido(char** comando, int numero_componentes){
                         return false;
                     }
                     return true;
-                }else{
+                }else if(numero_componentes<2){
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
+                    return false;
+                }else if(numero_componentes>2){
+                    write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
                     return false;
                 }
             }else if(strcmp(comando[0],"-h")==0){
@@ -130,26 +136,28 @@ bool comando_valido(char** comando, int numero_componentes){
                 return false;
             }
     }else{
-        write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
+        write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
         return false;
     }
 }
 
 
 bool valid_comand_prompt(char** command, int number_of_components){
-    if(number_of_components>= 1 && number_of_components <=2){
-            if(strcmp(command[0], "-m")==0 || strcmp(command[0],"-i")==0){ // adicionar aqui tempo-inactividade && tempo-execucao
+    if(number_of_components>= 1){
+            if(strcmp(command[0], "-m")==0 || strcmp(command[0],"-i")==0){
                 if(number_of_components==2){
                     if(!is_limit_valid(command[1])){
                         write(1,"Limite inválido\n",strlen("Limite inválido\n"));
                         return false;
                     }
                     return true;
-                }else{
+                }else if (number_of_components == 1){
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
                     return false;
+                }else{
+                    write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
+                    return false;
                 }
-                return true;
             }else if(strcmp(command[0],"-e")==0){
                 if(number_of_components==1){
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
@@ -198,7 +206,7 @@ bool valid_comand_prompt(char** command, int number_of_components){
                 return false;
             }
     }else{
-        write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
+        write(1,"Não foi introduzido um comando\n",strlen("Não foi introduzido um comando\n"));
         return false;
     }
 }
@@ -225,6 +233,32 @@ void show_help(){
 }
 
 
+void show_help_prompt(){
+
+    write(1,"Adjuda:\n",strlen("Adjuda:\n"));
+    char* string = "\t-i <secs>: define o tempo de inactividade de comunicação num pipe anónimo\n";
+    write(1,string,strlen(string));
+
+    string = "\t-m <secs>: define o tempo máximo de execução de uma tarefa\n";
+    write(1,string,strlen(string));
+
+    string = "\t-e <tarefa>: executa uma tarefa\n";
+    write(1,string,strlen(string));
+
+    string = "\t-l: lista as tarefas em execução\n";
+    write(1,string,strlen(string));
+
+    string = "\t-t <número tarefa>: termina a execução de uma tarefa\n";
+    write(1,string,strlen(string));
+
+    string = "\t-r: Lista as tarefas terminadas assim como o estado em que terminou\n";
+    write(1,string,strlen(string));
+   // printf("ĩh3ripuqh\n");
+    string = "\tNOTA: os comandos quando se usa a aplicação através da shell também se aplicam à utilização com prompt. Tanto -e ls | wc como argus executa ls | wc são válidos\n";
+    write(1,string,strlen(string));
+}
+
+
 // separates the line which was read by it's spaces
 
 //NOTA, MUDAR O MALLOC
@@ -246,17 +280,17 @@ char** separate_line(char* line_to_separate, int* number_of_sublines){
             }
             return res;
         }else if(strcmp(token,"tempo-inactividade")==0){
-            res[0] = "-i";
+            res[0] = strdup("-i");
         }else if(strcmp(token,"tempo-execucao")==0){
-            res[0] = "-m";
+            res[0] = strdup("-m");
         }else if(strcmp(token,"listar")==0){
-            res[0] = "-l";
+            res[0] = strdup("-l");
         }else if(strcmp(token,"terminar")==0){
-            res[0] = "-t";
+            res[0] = strdup("-t");
         }else if(strcmp(token,"historico")==0){
-            res[0] = "-r";
+            res[0] = strdup("-r");
         }else if(strcmp(token,"ajuda")==0){
-            res[0] = "-h";
+            res[0] = strdup("-h");
         }else{
             res[0] = strdup(token);
         }
@@ -285,6 +319,7 @@ int main(int argc, char* argv[]){
     write(1,"Open is done\n",strlen("Open is done\n"));
 
     if(argc>1){
+        printf("1!\n");
         char** comando = argv+1;
         int numero_componentes = argc-1;
         if(comando_valido(comando, numero_componentes)){
@@ -292,16 +327,12 @@ int main(int argc, char* argv[]){
             if(strcmp(comando[0],"-h")!=0){
                 printf("1\n");
                 char* comando_concatenado =  concatena_comando(comando, numero_componentes);
-                printf("2\n");
-                printf("Tamanho da string %d\n",strlen(comando_concatenado));
-                printf("%s\n",comando_concatenado);
 
                 //write(1,"Open is done\n",strlen("Open is done\n"));
                 if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
                     perror("Write");
                     return 1;
                 }
-                printf("3\n");
                 free(comando_concatenado);
             }else{
                 show_help();
@@ -309,6 +340,7 @@ int main(int argc, char* argv[]){
             
         }
     }else{
+        printf("2!\n");
         while(1){
             write(1,"Argus$: ",strlen("Argus$: "));
            // char* line = readline("");
@@ -330,7 +362,8 @@ int main(int argc, char* argv[]){
                     free(separated_line);
                     break;
                 }else if(strcmp(separated_line[0],"-h")==0){
-                    show_help();
+                    printf("A entrar na ajuda\n");
+                    show_help_prompt();
                 }else{
                     char* comando_concatenado =  concatena_comando(separated_line,number_of_sublines);
                     if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
