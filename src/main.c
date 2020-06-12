@@ -30,8 +30,8 @@ int number_records=0;
 
 // para a opção -m
 void timeout_handler(int signum) { 
+    printf("Timeout handler");
     for (int i = 0; i < pids_count; i++) {
-        printf("Killing process %d due to timeout\n", pids[i]);
         if (pids[i] > 0) {  // evitar kill -1;
             kill(pids[i], SIGKILL);
         }
@@ -50,13 +50,11 @@ void sigchld_handler_parent(int signum){
     int status,s=0;
     pid_t pid = wait(&status);
     if (WIFEXITED(status)){ 
-        int s=WEXITSTATUS(status); //wifeexisted- devolve algo !0 se o status tiver vindo de um child process
-        printf("status: %d\n",s);
+        int s=WEXITSTATUS(status);
         printf("O Pid apanhado no / do pai é %d\n",pid);
         int found=0;
         int i;
         for(i=0;i<number_records && !found;i++){
-            printf("i: %d, pid %d, status: %d\n",i,records_array[i]->pid,records_array[i]->status);
             if(records_array[i]->pid == pid){
                 found=1;
             }
@@ -75,9 +73,8 @@ void sigchld_handler_child(int signum){
 
 // será usado na opção -t
 void sigusr1_handler(int signum){
-    printf("sigusr1 handler\n");
+    printf("sigusr1 handler, terminar o processo\n");
     for(int i=0; i<pids_count;i++){
-        printf("A terminar o processo com o pid %d\n",pids[i]);
         kill(pids[i],SIGKILL);
     }
     forced_termination = 1;
@@ -268,9 +265,6 @@ int execute_pipe(char*** commands, int command_count,
                 wait(NULL);
             }
             alarm(0);
-        }
-        for(int k = 0;k<pids_count;k++){
-            printf("Pid filho a ser waited: %d\n",pids[k]);
         }
         if(forced_termination){
             _exit(2);
