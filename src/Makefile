@@ -4,8 +4,11 @@ VGFLAGS = --leak-check=full -s --show-reachable=no --track-origins=yes --keep-st
 EXECUTABLE=smecep
 
 
-make:
-	gcc -g -o smecep main.c
+make server:
+	gcc -o server server.c
+
+make client:
+	gcc -o argus argus.c
 
 grind:
 	valgrind $(VGFLAGS) ./$(EXECUTABLE) 

@@ -131,6 +131,20 @@ bool comando_valido(char** comando, int numero_componentes){
                 }else{
                     return true;
                 } 
+            }else if(strcmp(comando[0],"-o")==0){
+                if(numero_componentes==2){
+                    if(!is_task_number_valid(comando[1])){
+                        write(1,"Número inválido\n",strlen("Número inválido\n"));
+                        return false;
+                    }
+                    return true;
+                }else if(numero_componentes<2){
+                    write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
+                    return false;
+                }else if(numero_componentes>2){
+                    write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
+                    return false;
+                }
             }else{
                 write(1,"Comando inexistente\n",strlen("Comando inexistente\n"));
                 return false;
@@ -139,6 +153,7 @@ bool comando_valido(char** comando, int numero_componentes){
         write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
         return false;
     }
+    return false;
 }
 
 
@@ -185,6 +200,20 @@ bool valid_comand_prompt(char** command, int number_of_components){
                     return true;
                 }else{
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
+                    return false;
+                }
+            }else if(strcmp(command[0],"-o")==0){
+                if(number_of_components==2){
+                    if(!is_task_number_valid(command[1])){
+                        write(1,"Número inválido\n",strlen("Número inválido\n"));
+                        return false;
+                    }
+                    return true;
+                }else if(number_of_components<2){
+                    write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
+                    return false;
+                }else if(number_of_components>2){
+                    write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
                     return false;
                 }
             }else if(strcmp(command[0],"-h")==0){
@@ -300,6 +329,8 @@ char** separate_line(char* line_to_separate, int* number_of_sublines){
             res[0] = strdup("-r");
         }else if(strcmp(token,"ajuda")==0){
             res[0] = strdup("-h");
+        }else if(strcmp(token,"output")==0){
+            res[0] = strdup("-o");
         }else{
             res[0] = strdup(token);
         }
@@ -333,7 +364,7 @@ int main(int argc, char* argv[]){
         int numero_componentes = argc-1;
         if(comando_valido(comando, numero_componentes)){
             printf("Comando válido\n");
-            if(strcmp(comando[0],"-h")!=0){
+            if(strcmp(comando[0],"-h")!=0 && strcmp(comando[0],"-o")!=0){
                 printf("1\n");
                 char* comando_concatenado =  concatena_comando(comando, numero_componentes);
 
@@ -343,8 +374,10 @@ int main(int argc, char* argv[]){
                     return 1;
                 }
                 free(comando_concatenado);
-            }else{
+            }else if(strcmp(comando[0],"-h")==0) {
                 show_help();
+            }else {
+                printf("COLOCAR O -O AQUI\n");
             }
             
         }
@@ -373,6 +406,8 @@ int main(int argc, char* argv[]){
                 }else if(strcmp(separated_line[0],"-h")==0){
                     printf("A entrar na ajuda\n");
                     show_help_prompt();
+                }else if(strcmp(separated_line[0],"-o")==0){
+                    printf("OPÇÃO -O AQUI\n");
                 }else{
                     char* comando_concatenado =  concatena_comando(separated_line,number_of_sublines);
                     if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
