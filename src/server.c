@@ -436,20 +436,40 @@ int main(){
 
 
 
-    int fifo_fd;
-    while(fifo_fd = open("fifo",O_RDONLY)){ // para ir lendo continuamente
-        printf("\n\nNova instrução\n");
+    int fifo_client_to_server_fd;
+    int fifo_server_to_client_fd;
+    while(fifo_client_to_server_fd = open("fifo_client_to_server",O_RDONLY)){ // para ir lendo continuamente
+        printf("\n\n\nNovo Ciclo:\n");
         printf("fifo is open\n");
+
+        printf("A abrir o fifo de escrita\n");
+        if((fifo_server_to_client_fd = open("aa",O_WRONLY))<0){
+            perror("open");
+            return 1;
+        }
+        printf("Fifo de escrita aberto\n");
+       
+
+        
         char buf[1024];
         //ssize_t bytes_read = readln(fifo_fd, buf, 1024);
         //ssize_t bytes_read=readln(fifo_fd,buf,1024);
-        int bytes_read =read(fifo_fd,buf,1024);
+        int bytes_read =read(fifo_client_to_server_fd,buf,1024);
         buf[bytes_read] = '\0';
         printf("acabou a leitura\n");
 
         process_instruction(buf,bytes_read);
-        close(fifo_fd);
+        //printf("\n\n\n-************\n\n\n");
+        close(fifo_client_to_server_fd);
+
+        write(fifo_server_to_client_fd,"teste de escrita do fifo\n", strlen("teste de escritta do fifo\n"));
+        write(fifo_server_to_client_fd,"segunda escrita\n",strlen("segunda escrita\n"));
+
+        close(fifo_server_to_client_fd);
+        printf("fifo fechado\n");
     }
+
+
     return 0;
 }
 

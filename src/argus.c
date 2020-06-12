@@ -309,7 +309,7 @@ char** separate_line(char* line_to_separate, int* number_of_sublines){
         //special case of execute
         if((strcmp(token,"executar")==0) || strcmp(token,"-e")==0 ){
             res[0] = strdup("-e");
-            if(rest){
+            if(rest && strlen(rest)>0){
                 res = realloc(res,sizeof(char*)*2);
                 res[1] = strdup(rest);
                 *number_of_sublines=2;
@@ -344,19 +344,31 @@ char** separate_line(char* line_to_separate, int* number_of_sublines){
     return res;
 }
 
+// abre um fifo que irá ler a resposta dada pelo servidor
+int read_answer(){
+    sleep(1);
+    int fifo_server_to_client_fd;
+    printf("A abrir o fifo de escrita no lado do cliente\n");
+    if((fifo_server_to_client_fd = open("aa",O_RDONLY))<0){
+        perror("open");
+        return 1;
+    }
+    printf("Open\n");
+    int n_bytes =0;
+    char buf[1024];
+    while((n_bytes = read(fifo_server_to_client_fd,buf,1024))>0){
+        write(1,buf,n_bytes);
+    }
+    printf("Pós leitura\n");
+    close(fifo_server_to_client_fd);
+    return 0;
+}
+
 int main(int argc, char* argv[]){
     if(argc>3){
         write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
         return 1;
     }
-
-
-    int fd;
-    if((fd = open("fifo",O_WRONLY))<0){
-        perror("open");
-        return 1;
-    }
-    write(1,"Open is done\n",strlen("Open is done\n"));
 
     if(argc>1){
         printf("1!\n");
@@ -368,11 +380,20 @@ int main(int argc, char* argv[]){
                 printf("1\n");
                 char* comando_concatenado =  concatena_comando(comando, numero_componentes);
 
+                int fd;
+                if((fd = open("fifo_client_to_server",O_WRONLY))<0){
+                    perror("open");
+                    return 1;
+                }
+                write(1,"Open is done\n",strlen("Open is done\n"));
                 //write(1,"Open is done\n",strlen("Open is done\n"));
                 if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
                     perror("Write");
                     return 1;
                 }
+                close(fd);
+                read_answer();
+                
                 free(comando_concatenado);
             }else if(strcmp(comando[0],"-h")==0) {
                 show_help();
@@ -385,7 +406,7 @@ int main(int argc, char* argv[]){
         printf("2!\n");
         while(1){
             write(1,"Argus$: ",strlen("Argus$: "));
-           // char* line = readline("");
+        // char* line = readline("");
             char line[1024];
             int n_bytes = readln(1,line,1024);
             line[n_bytes] = '\0';
@@ -410,10 +431,20 @@ int main(int argc, char* argv[]){
                     printf("OPÇÃO -O AQUI\n");
                 }else{
                     char* comando_concatenado =  concatena_comando(separated_line,number_of_sublines);
+                    int fd;
+                    if((fd = open("fifo_client_to_server",O_WRONLY))<0){
+                        perror("open");
+                        return 1;
+                    }
+                    write(1,"Open is done\n",strlen("Open is done\n"));
+
+
                     if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
                         perror("Write");
                         return 1;
                     }
+                    close(fd);
+                    read_answer();
                     free(comando_concatenado);
                 }
             }else{
@@ -426,6 +457,7 @@ int main(int argc, char* argv[]){
             free(separated_line);
         }
     }
-    close(fd);
     return 0;
 }
+
+

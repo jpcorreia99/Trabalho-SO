@@ -124,7 +124,7 @@ int execute_pipe(char*** commands, int command_count,
 }
 
 
-int main(int argc, char *argv[]) {
+int main3(int argc, char *argv[]) {
     char ** commands[4];
     char *grep[5] = { "grep", "-v", "^#", "/etc/passwd", NULL };
     char *cut[4]  = { "cut", "-f7", "-d:", NULL };
@@ -165,5 +165,10 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+int main(){
+    if(mkfifo("fifo_client_to_server",0666)<0){
+        perror("mkfifo");
+    }
 
+}
 
