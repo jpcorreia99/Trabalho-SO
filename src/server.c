@@ -443,7 +443,7 @@ int main(){
         printf("fifo is open\n");
 
         printf("A abrir o fifo de escrita\n");
-        if((fifo_server_to_client_fd = open("aa",O_WRONLY))<0){
+        if((fifo_server_to_client_fd = open("fifo_server_to_client",O_WRONLY))<0){
             perror("open");
             return 1;
         }

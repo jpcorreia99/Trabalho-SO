@@ -349,7 +349,7 @@ int read_answer(){
     sleep(1);
     int fifo_server_to_client_fd;
     printf("A abrir o fifo de escrita no lado do cliente\n");
-    if((fifo_server_to_client_fd = open("aa",O_RDONLY))<0){
+    if((fifo_server_to_client_fd = open("fifo_server_to_client",O_RDONLY))<0){
         perror("open");
         return 1;
     }
