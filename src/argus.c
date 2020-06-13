@@ -1,6 +1,5 @@
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,12 +7,11 @@
 #include <string.h>
 #include <stdbool.h>
 
-/*#include <readline/readline.h> // a apagar quando readLn estiver implementado
-#include <readline/readline.h>
-#include <readline/history.h>*/
 
 //gcc -o smecep -lreadline argus.c
 
+//remover o tempo de espera na escrita
+//meter as funções todas em ingles
 //mudar o handler do sigchl pequeno para não ser o ignora mas simplesmente dar reset ao comportamento
 
 // acabar de criar a ajuda para o prompt e verificar que um comando não existe
@@ -23,6 +21,30 @@ ssize_t readln(int fd, char* line, size_t size) {
             ;
         return i;
     }
+
+
+
+char* read_line(int fd,int* bytes_read){
+    *bytes_read=0;
+    int total_bytes_read=0;
+    int max_size = 900;
+    char* res = malloc(sizeof(char)*max_size);
+    int n_bytes_read=0;
+    
+    while((n_bytes_read=read(fd,res+total_bytes_read,1))>0){
+        total_bytes_read++;
+        if(res[total_bytes_read-1]=='\n'){
+            res[total_bytes_read-1] = '\0';
+            break;
+        }
+        if(total_bytes_read==max_size){
+            max_size*=2; 
+            res = realloc(res,sizeof(char) * (max_size));
+        }
+    }
+    *bytes_read = total_bytes_read-1;
+    return res;
+}
 
 
 /**
@@ -37,11 +59,11 @@ bool is_limit_valid(char* s){
     long value = strtol(s,&temp,10); // using base 10
     if (temp != s && *temp == '\0' && value >=0)
     {
-       return true;
+        return true;
     }
     else
     {
-       return false;
+        return false;
     }
 }
 
@@ -54,11 +76,11 @@ bool is_task_number_valid(char* s){
     long value = strtol(s,&temp,10); // using base 10
     if (temp != s && *temp == '\0' && value >=1)
     {
-       return true;
+        return true;
     }
     else
     {
-       return false;
+        return false;
     }
 }
 
@@ -371,7 +393,6 @@ int main(int argc, char* argv[]){
     }
 
     if(argc>1){
-        printf("1!\n");
         char** comando = argv+1;
         int numero_componentes = argc-1;
         if(comando_valido(comando, numero_componentes)){
@@ -403,29 +424,21 @@ int main(int argc, char* argv[]){
             
         }
     }else{
-        printf("2!\n");
         while(1){
             write(1,"Argus$: ",strlen("Argus$: "));
-        // char* line = readline("");
-            char line[1024];
-            int n_bytes = readln(1,line,1024);
-            line[n_bytes] = '\0';
+            int bytes_read;
+            char* line = read_line(1,&bytes_read);
 
-            write(1,line, strlen(line));
-            printf("\n");
             int number_of_sublines=0;
             char** separated_line = separate_line(line,&number_of_sublines);
-            /*for(int i =0;i<number_of_sublines;i++){
-                printf("Separated lines[%d]: %s\n",i,separated_line[i]);
-            }
-            printf("Number of sublines: %d\n",number_of_sublines);*/
+
             if(valid_comand_prompt(separated_line,number_of_sublines)){
                 if(strcmp(separated_line[0],"sair")==0){
                     free(separated_line[0]);
                     free(separated_line);
+                    free(line);
                     break;
                 }else if(strcmp(separated_line[0],"-h")==0){
-                    printf("A entrar na ajuda\n");
                     show_help_prompt();
                 }else if(strcmp(separated_line[0],"-o")==0){
                     printf("OPÇÃO -O AQUI\n");
@@ -436,8 +449,6 @@ int main(int argc, char* argv[]){
                         perror("open");
                         return 1;
                     }
-                    write(1,"Open is done\n",strlen("Open is done\n"));
-
 
                     if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
                         perror("Write");
@@ -447,14 +458,13 @@ int main(int argc, char* argv[]){
                     read_answer();
                     free(comando_concatenado);
                 }
-            }else{
-                printf("Falhou a validação\n");
             }
-            printf("%d\n",number_of_sublines);
             for(int i =0;i<number_of_sublines;i++){
                 free(separated_line[i]);
             }
             free(separated_line);
+            free(line);
+            
         }
     }
     return 0;

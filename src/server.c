@@ -7,16 +7,19 @@
 //./a.out -e "ls | wc"
 //./a.out -e "grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq | wc -l"
 
-// ver porque é que o handler do sig2 não está a dar print
-// talvez meter o records como variável global, testar se os limites estão a funcionar
+//mudar leitura do pipe client -> server para não ser só read
+
+
+
 int* pids;
 int pids_count;
-int time_limit_execute = 100;
-int time_limit_communication = 1;
+int time_limit_execute = 500;
+int time_limit_communication = 100;
 int forced_termination = 0;
 int timeout_termination = 0;
 int timeout_communication = 0;
 
+int fifo_server_to_client_fd=-1;
 
 typedef struct record {
     char* name;
@@ -26,6 +29,7 @@ typedef struct record {
 
 Record records_array[1024];
 int number_records=0;
+
 
 
 
@@ -74,19 +78,24 @@ void update_output_index(int size){
 	    printf("%s\n",linha);
 	}
 
-// para a opção -o
-int open_command_output_file(){
-	int fd = open("output.txt", O_RDWR | O_APPEND, 0666);
-	printf("FD : %d \n\n", fd);
-	if (fd < 0){
-		fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
-		write(fd,"0,\n",3);
-	}
-	else{
-		fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);		
-	}
-	return fd;	
-	}
+
+
+char* read_fifo(int fifo_fd,int* bytes_read){
+    *bytes_read=0;
+    int total_bytes_read=0;
+    char* res = malloc(sizeof(char)*1024);
+    int n_bytes_read;
+    while((n_bytes_read=read(fifo_fd,res+total_bytes_read,1024))>0){
+        total_bytes_read +=n_bytes_read;
+        if(n_bytes_read==1024){
+            res = realloc(res,sizeof(char) * (total_bytes_read * 2));
+        }
+    }
+    res[total_bytes_read]='\0';
+    *bytes_read = total_bytes_read;
+    return res;
+}
+
 
 // para a opção -m
 void timeout_handler(int signum) { 
@@ -99,10 +108,11 @@ void timeout_handler(int signum) {
     timeout_termination = 1;
 }
 
+/* utilizado quando é ultrapassado o limite de 
+tempo de falta de comunicação entre pipes*/
 void communication_limit_handler(int signum) { 
     int parent_pid = getppid();
     kill(parent_pid,SIGUSR2);
-    printf("\n\n***Timeout do -i*****, pid do pai: %d\n\n\n",parent_pid);
 }
 
 void sigchld_handler_parent(int signum){
@@ -160,8 +170,6 @@ ssize_t readln(int fd, char* line, size_t size) {
 
 char*** separate_commands(char* str, int* number_commands,
                           int** size_commands_array) {
-    char str2[] = "grep -v ^# /etc/passwd | cut -f7 -d: | uniq | wc";
-    char str3[] = "pstree | wc";
 
     char*** command_matrix = NULL;
     char* tokenized_string = strtok(str, " ");
@@ -223,8 +231,8 @@ int execute_pipe(char*** commands, int command_count,
         if (signal(SIGCHLD, sigchld_handler_child) == SIG_ERR){
             perror("sigchild son error\n");
         }
-       alarm(time_limit_execute);
-//CRIAR AQUI O pipeOutPut
+        close(fifo_server_to_client_fd);
+        alarm(time_limit_execute);
         int pipe_command_output[2];
 	pipe(pipe_command_output);
         int pid;
@@ -383,10 +391,13 @@ int execute_pipe(char*** commands, int command_count,
 
 
 int execute_task(char* task){
-    printf("Resto: %s\n",task);
     Record record = malloc(sizeof(Record));
     record->name = strdup(task);
     record->status = 0;
+    char buf[50];
+    int bytes_written = snprintf(buf,50,"Nova tarefa #%d\n",number_records+1);
+    write(fifo_server_to_client_fd,buf,bytes_written);
+
     int number_commands;
     int* size_commands_array;
     char*** command_matrix = separate_commands(
@@ -412,83 +423,84 @@ int execute_task(char* task){
 
 void terminate_task(char* index){
     long task_number = strtol(index,NULL,10); // using base 
-    task_number--;// para fazer o numero da tarefa ser o indice
-    printf("Task to terminate: %d\n",task_number);
+    task_number--;// para o numero da tarefa corresponder ser o indice
     if(task_number<number_records){
         if(records_array[task_number]->status==0){
             kill(records_array[task_number]->pid, SIGUSR1);
-            printf("Terminar a tarefa\n");
+            char buf[80];
+            int bytes_written = snprintf(buf,64,"Servidor: tarefa %d terminada manualmente\n",task_number+1);
+            write(fifo_server_to_client_fd,buf,bytes_written);
         }else{
-            printf("Tarefa já terminada\n");
+            write(fifo_server_to_client_fd,"Servidor: Tarefa já tinha terminado\n",strlen("Servidor: Tarefa já tinha terminado\n"));
         }
     }else{
-        printf("Tarefa inexistente\n");
+         write(fifo_server_to_client_fd,"Servidor: Tarefa inexistente\n",strlen("Servidor: Tarefa inexistente\n"));
     }
-
 }
 
-int change_time_limit_execute(char* limit){
+void change_time_limit_execute(char* limit){
     long value = strtol(limit,NULL,10); // using base 10
     time_limit_execute = value;
-    printf("New time limit execute: %d\n",time_limit_execute);
-    return 0;
+    char buf[100];
+    int bytes_writen = snprintf(buf,100,"Servidor: Novo limite de tempo de execução: %d\n",time_limit_execute);
+    write(fifo_server_to_client_fd,buf,bytes_writen);
 }
 
-int change_ime_limit_communication(char* limit){
+void change_ime_limit_communication(char* limit){
     long value = strtol(limit,NULL,10); // using base 10
     time_limit_communication = value;
-    printf("New time limit communication: %d\n",time_limit_communication);
-    return 0;
+    char buf[100];
+    int bytes_writen = snprintf(buf,100,"Servidor: Novo limite de tempo de inatividade: %d\n",time_limit_communication);
+    write(fifo_server_to_client_fd,buf,bytes_writen);
 }
 
 void show_current_tasks(){
-        printf("Tarefas em execução:\n");
+    write(fifo_server_to_client_fd,"Servidor: Tarefas em execução: \n",strlen("Servidor: Tarefas em execução: \n"));
     for(int i=0;i<number_records;i++){
         if(records_array[i]->status==0){
-            printf("Tarefa #%d: %s\n",i+1,records_array[i]->name);
+            int string_size = 15+strlen(records_array[i]->name);
+            char buf[string_size];
+            int bytes_written = snprintf(buf,string_size,"\t#%d: %s\n",i+1,records_array[i]->name);
+            write(fifo_server_to_client_fd,buf,bytes_written);
         }
     }
 }
 
 void show_history(){
-    printf("Histórico:\n");
+    write(fifo_server_to_client_fd,"Servidor: Histórico: \n",strlen("Servidor: Histórico: \n"));
     for(int i=0;i<number_records;i++){
-        char *status;
-        
-        switch(records_array[i]->status){
-            case 0:
-                status = "Em execução";
-                break;
-            case 1:
-                status = "Terminado normalmente";
-                break;
-            case 2:
-                status = "Terminada pelo utilizador";
-                break;
-            case 3:
-                status = "Terminada por máximo de tempo de execução";
-                break;
-            case 4:
-                status = "Terminado por máximo de inatividade de comunicação";
-                break;
-            default:
-                status = "Status ainda não definido";
+        if(records_array[i]->status>0){
+            char *status;
+            
+            switch(records_array[i]->status){
+                case 1:
+                    status = "Terminado normalmente";
+                    break;
+                case 2:
+                    status = "Terminada pelo utilizador";
+                    break;
+                case 3:
+                    status = "Terminada por máximo de tempo de execução";
+                    break;
+                case 4:
+                    status = "Terminado por máximo de inatividade de comunicação";
+                    break;
+                default:
+                    status = "Erro: status indefinido";
+            }
+            int string_size = 30+strlen(records_array[i]->name) + strlen(status);
+            char buf[string_size];
+            int bytes_written = snprintf(buf,string_size,"\t#%d: %s, status: %s\n",i+1,records_array[i]->name,status);
+            write(fifo_server_to_client_fd,buf,bytes_written);
         }
-
-        printf("Tarefa: %d, %s, status: %s\n",i+1,records_array[i]->name,status);
     }
 }
 
 int process_instruction(char* instruction, int instruction_size){
-    printf("A entrar na process_instructiion\n");
-    printf("Comprimento da instrução: %d\n",strlen(instruction));
-    printf("Intrução: %s\n",instruction);
-    int i=0;
 
     char* rest;
     char* token = strtok_r(instruction," ",&rest);
     if(token!=NULL && strlen(token)>1){ // nunca deverá ser preciso verificar, mas adicionou-se por uma questão de segurança
-        printf("O primeiro tokenize: %s\n",token);
         switch (token[1])
         {
         case 'e':
@@ -539,7 +551,7 @@ int main(){
 
 
     int fifo_client_to_server_fd;
-    int fifo_server_to_client_fd;
+    //int fifo_server_to_client_fd;
     while(fifo_client_to_server_fd = open("fifo_client_to_server",O_RDONLY)){ // para ir lendo continuamente
         printf("\n\n\nNovo Ciclo:\n");
         printf("fifo is open\n");
@@ -553,19 +565,20 @@ int main(){
        
 
         
-        char buf[1024];
+        //char buf[1024];
         //ssize_t bytes_read = readln(fifo_fd, buf, 1024);
         //ssize_t bytes_read=readln(fifo_fd,buf,1024);
-        int bytes_read =read(fifo_client_to_server_fd,buf,1024);
-        buf[bytes_read] = '\0';
+        //int bytes_read =read(fifo_client_to_server_fd,buf,1024);
+        //buf[bytes_read] = '\0';
+        int bytes_read;
+        char* line = read_fifo(fifo_client_to_server_fd,&bytes_read);
+
+        printf("Linha lida %s\n, comprimento_ %d\n",line,bytes_read);
+        close(fifo_client_to_server_fd);
         printf("acabou a leitura\n");
 
-        process_instruction(buf,bytes_read);
-        //printf("\n\n\n-************\n\n\n");
-        close(fifo_client_to_server_fd);
-
-        write(fifo_server_to_client_fd,"teste de escrita do fifo\n", strlen("teste de escritta do fifo\n"));
-        write(fifo_server_to_client_fd,"segunda escrita\n",strlen("segunda escrita\n"));
+        process_instruction(line,bytes_read);
+        free(line);
 
         close(fifo_server_to_client_fd);
         printf("fifo fechado\n");
