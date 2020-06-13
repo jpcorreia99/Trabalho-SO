@@ -28,66 +28,6 @@ Record records_array[1024];
 int number_records=0;
 
 
-
-// le uma linha para o line.
-ssize_t readln2(int fd, char *line, size_t size){
-  int i = 0; ssize_t res; int stop = 1; int j = 0; // int keepReading = 1; i
-  while(i < size-1 && stop && (res = read(fd,&(line[i]),200)) ) {
-     stop = stop;	
-     if (res){
-      for(j = 0; j < res && i+j < size && stop; j++){
-        if (line [i+j] == '\n') stop = 0; 
-        }
-      }
-      if (stop) i += res; 
-     // printf("Linha nº %d: %s\n",counter, line);
-     }
-  line[i+j] = '\0';
-  //off_t lseek(int fd, off_t offset, int whence);
-  //printf("Linha nº %d: %s\n",counter, line);
-  if (!stop) lseek(fd, -res+j, SEEK_CUR);
-  return i + j;
- }
-
-void update_output_index(int size){
-	int output_fd;
-	if ((output_fd = open("output_index.txt", O_RDWR , 0666)) < 0){
-		output_fd = open("output_index.txt", O_RDWR | O_CREAT, 0666);
-		write(output_fd,"0,\n",3);
-		lseek(output_fd,0,SEEK_SET);
-	}
-	printf("SIZE : %d \n\n",size);
-	char linha [1024];
-	int linha_length;
-	int linha_length2 = readln2(output_fd,linha,1024);
-	    //output_fd = lseek(output_fd,linha_length2,SEEK_SET);
-	   // lseek(output_fd, linha_length, SEEK_CUR);
-	    
-	    for(linha_length = linha_length2 - 3 ; linha_length >= 0 && linha[linha_length] != ','; linha_length--){
-		;
-	    }
-	    linha_length++; 
-	    int output_length = strtol(&(linha[linha_length]),NULL,10);
-	    linha_length2 = sprintf(linha,"%d,\n",output_length + size);
-	    lseek(output_fd,-1,SEEK_CUR);
-	    write(output_fd,linha,linha_length2);
-	    printf("%s\n",linha);
-	}
-
-// para a opção -o
-int open_command_output_file(){
-	int fd = open("output.txt", O_RDWR | O_APPEND, 0666);
-	printf("FD : %d \n\n", fd);
-	if (fd < 0){
-		fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
-		write(fd,"0,\n",3);
-	}
-	else{
-		fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);		
-	}
-	return fd;	
-	}
-
 // para a opção -m
 void timeout_handler(int signum) { 
     printf("Timeout handler");
@@ -213,20 +153,13 @@ char*** separate_commands(char* str, int* number_commands,
 
 int execute_pipe(char*** commands, int command_count,
                  int* size_commands_array) {
-    int TESTES_FDS = open("TESTES.txt", O_CREAT | O_APPEND | O_RDWR, 0666);
     pid_t pid;
-    char buf [1024];
-    int buf_line_size = 0;
-    int buf_total_size = 0;
-    int output_fd;
     if((pid = fork())==0){
         if (signal(SIGCHLD, sigchld_handler_child) == SIG_ERR){
             perror("sigchild son error\n");
         }
+
        alarm(time_limit_execute);
-//CRIAR AQUI O pipeOutPut
-        int pipe_command_output[2];
-	pipe(pipe_command_output);
         int pid;
         pids_count = command_count;
         pids = malloc(sizeof(int) * pids_count);
@@ -234,23 +167,10 @@ int execute_pipe(char*** commands, int command_count,
         if (command_count == 1) {
             printf("2\n");
             if ((pid = fork()) == 0) {
-		//printf("AQUI CAralhO\n");
-	        dup2(pipe_command_output[1],1);
-		close(pipe_command_output[1]);
                 execvp(commands[0][0], commands[0]);
                 _exit(-1);
-           }
- 	   output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
-	   close(pipe_command_output[1]);
-	   while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
-			buf_total_size += write(output_fd,buf,buf_line_size);
-			write(1,buf,buf_line_size);
-	   update_output_index(buf_total_size);
-	    }
-	    close(pipe_command_output[1]);
-	    close(pipe_command_output[0]);
+            }
             pids[0] = pid;  // nota: o fork devolve o pid do filho para o pai
-	    printf("TESTE PRINTS\n");
             wait(NULL);
             alarm(0);
         }else{
@@ -336,31 +256,9 @@ int execute_pipe(char*** commands, int command_count,
                 dup2(fildes_aux[0],0);
                 close(fildes_aux[0]);
 
-		dup2(pipe_command_output[1],1);
-		close(pipe_command_output[1]);
                 execvp(commands[i][0], commands[i]);
                 _exit(1);
             }
-/*	        dup2(pipe_command_output[1],1);
-		close(pipe_command_output[1]);
-                execvp(commands[0][0], commands[0]);
-                _exit(-1);
-           }*/
- 	   output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
-	   close(pipe_command_output[1]);
-	   printf("ANTES DO LOOP\n\n");
-	   while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
-			buf_total_size += write(output_fd,buf,buf_line_size);
-			write(1,buf,buf_line_size);
-	    }
-	   printf("DEPOIS DO LOOP\n\n");
-	    char teste [20];
-	    int teste_t = sprintf(teste,"TAMANHO : %d\n", buf_total_size);
-	    write(1,teste,teste_t);
-	    update_output_index(buf_total_size);
-	    close(pipe_command_output[1]);
-	    close(pipe_command_output[0]);
-	    close(output_fd);
             pids[i] = pid;  // i == command_count-1
             close(fildes[i-1][0]);
             for (int j = 0; j < command_count; j++) {

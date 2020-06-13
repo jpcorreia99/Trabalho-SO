@@ -5,7 +5,7 @@ EXECUTABLE=smecep
 
 
 make servidor:
-	gcc -o server server.c
+	gcc -o  server server.c
 
 make cliente:
 	gcc -o argus argus.c

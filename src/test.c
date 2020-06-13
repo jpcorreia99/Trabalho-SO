@@ -166,7 +166,7 @@ int main3(int argc, char *argv[]) {
 }
 
 int main(){
-    if(mkfifo("fifo_server_to_client",0666)<0){
+    if(mkfifo("fifo_client_to_server",0666)<0){
         perror("mkfifo");
     }
 
