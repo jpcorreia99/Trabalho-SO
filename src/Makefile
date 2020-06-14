@@ -8,11 +8,11 @@ make clean:
 	rm argus
 	rm fifo_client_to_server
 	rm fifo_server_to_client
-	rm log.txt
+	rm output.txt
 	rm log.idx
 make all:
 	gcc -o  argusd argusd.c
-	gcc -ggdb3 -o argus argus.c
+	gcc -o argus argus.c
 	mkfifo "fifo_client_to_server" -m666 
 	mkfifo "fifo_server_to_client" -m666 
 

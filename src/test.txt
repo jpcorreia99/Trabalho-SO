@@ -1,5 +1,0 @@
-é sṕo para imprimir g̣̣̣
-
--- o -o deve ser consultado no client 
--- o -o deve ser criado no server, o número da tarefa é o record number
-

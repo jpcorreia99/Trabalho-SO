@@ -144,6 +144,7 @@ void sigchld_handler_child(int signum){
 void sigusr1_handler(int signum){
     printf("sigusr1 handler, terminar o processo\n");
     for(int i=0; i<pids_count;i++){
+        printf("A matar o pid %d\n",pids[i]);
         kill(pids[i],SIGKILL);
     }
     forced_termination = 1;
@@ -230,9 +231,12 @@ int execute_pipe(char*** commands, int command_count,
             perror("sigchild son error\n");
         }
         close(fifo_server_to_client_fd);
+
         alarm(time_limit_execute);
+
         int pipe_command_output[2];
-	pipe(pipe_command_output);
+	    pipe(pipe_command_output);
+
         int pid;
         pids_count = command_count;
         pids = malloc(sizeof(int) * pids_count);
@@ -240,22 +244,26 @@ int execute_pipe(char*** commands, int command_count,
         if (command_count == 1) {
             printf("2\n");
             if ((pid = fork()) == 0) {
-	        dup2(pipe_command_output[1],1);
-		close(pipe_command_output[1]);
+	            dup2(pipe_command_output[1],1);
+		        close(pipe_command_output[1]);
                 execvp(commands[0][0], commands[0]);
                 _exit(-1);
-           }
- 	   output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
-	   close(pipe_command_output[1]);
-	   while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
-			buf_total_size += write(output_fd,buf,buf_line_size);
-			write(1,buf,buf_line_size);
-	   update_output_index(buf_total_size);
-	    }
-	    close(pipe_command_output[1]);
-	    close(pipe_command_output[0]);
+            }
+            printf("O pid da tarefa é %d\n",pid);
             pids[0] = pid;  // nota: o fork devolve o pid do filho para o pai
-	    printf("TESTE PRINTS\n");
+
+            
+            output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
+            close(pipe_command_output[1]);
+            while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
+                buf_total_size += write(output_fd,buf,buf_line_size);
+                write(1,buf,buf_line_size);
+                update_output_index(buf_total_size);
+            }
+            close(pipe_command_output[1]);
+            close(pipe_command_output[0]);
+
+            printf("TESTE PRINTS\n");
             wait(NULL);
             alarm(0);
         }else{
@@ -314,6 +322,7 @@ int execute_pipe(char*** commands, int command_count,
                 close(fildes[i - 1][0]);
                 close(fildes[i][1]);
             }
+
             if ((pid = fork()) == 0) {
                 if (signal(SIGALRM, communication_limit_handler) == SIG_ERR){
                     perror("sigchild son error\n");
@@ -341,26 +350,22 @@ int execute_pipe(char*** commands, int command_count,
                 dup2(fildes_aux[0],0);
                 close(fildes_aux[0]);
 
-		dup2(pipe_command_output[1],1);
-		close(pipe_command_output[1]);
+                dup2(pipe_command_output[1],1);
+                close(pipe_command_output[1]);
                 execvp(commands[i][0], commands[i]);
                 _exit(1);
             }
-/*	        dup2(pipe_command_output[1],1);
-		close(pipe_command_output[1]);
-                execvp(commands[0][0], commands[0]);
-                _exit(-1);
-           }*/
- 	   output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
-	   close(pipe_command_output[1]);
-	   while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
-			buf_total_size += write(output_fd,buf,buf_line_size);
-			write(1,buf,buf_line_size);
-	    }
-	    update_output_index(buf_total_size);
-	    close(pipe_command_output[1]);
-	    close(pipe_command_output[0]);
-	    close(output_fd);
+
+            output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
+            close(pipe_command_output[1]);
+            while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
+                    buf_total_size += write(output_fd,buf,buf_line_size);
+                    write(1,buf,buf_line_size);
+	        }
+            update_output_index(buf_total_size);
+            close(pipe_command_output[1]);
+            close(pipe_command_output[0]);
+            close(output_fd);
             pids[i] = pid;  // i == command_count-1
             close(fildes[i-1][0]);
             for (int j = 0; j < command_count; j++) {
@@ -380,6 +385,7 @@ int execute_pipe(char*** commands, int command_count,
     }
     return pid;
 }
+        
 
 
 int execute_task(char* task){
