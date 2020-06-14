@@ -13,8 +13,8 @@
 
 int* pids;
 int pids_count;
-int time_limit_execute = 500;
-int time_limit_communication = 100;
+int time_limit_execute = 10;
+int time_limit_communication = 5;
 int forced_termination = 0;
 int timeout_termination = 0;
 int timeout_communication = 0;
@@ -100,7 +100,7 @@ char* read_fifo(int fifo_fd,int* bytes_read){
 void timeout_handler(int signum) { 
     printf("Timeout handler");
     for (int i = 0; i < pids_count; i++) {
-        if (pids[i] > 0) {  // evitar kill -1;
+        if (pids[i] > 0) {  // evitar kill -1/0;
             kill(pids[i], SIGKILL);
         }
     }
@@ -144,8 +144,9 @@ void sigchld_handler_child(int signum){
 void sigusr1_handler(int signum){
     printf("sigusr1 handler, terminar o processo\n");
     for(int i=0; i<pids_count;i++){
-        printf("A matar o pid %d\n",pids[i]);
-        kill(pids[i],SIGKILL);
+        if(pids[i]>0){
+            kill(pids[i],SIGKILL);
+        }
     }
     forced_termination = 1;
 }
@@ -155,7 +156,9 @@ void sigusr2_handler(int signum){
     printf("\n\n**sigusr2 handler\n\n\n");
     for(int i=0; i<pids_count;i++){
         printf("A terminar o processo com U pid %d\n",pids[i]);
-        kill(pids[i],SIGKILL);
+        if(pids[i]>0){
+            kill(pids[i],SIGKILL);
+        }
     }
     timeout_communication = 1;
 }
@@ -237,19 +240,19 @@ int execute_pipe(char*** commands, int command_count,
         int pipe_command_output[2];
 	    pipe(pipe_command_output);
 
-        int pid;
-        pids_count = command_count;
-        pids = malloc(sizeof(int) * pids_count);
         memset(pids,-1,pids_count);
         if (command_count == 1) {
-            printf("2\n");
+
+            pids_count = command_count;
+            pids = malloc(sizeof(int) * pids_count);
+            memset(pids,-1,pids_count);
+
             if ((pid = fork()) == 0) {
 	            dup2(pipe_command_output[1],1);
 		        close(pipe_command_output[1]);
                 execvp(commands[0][0], commands[0]);
                 _exit(-1);
             }
-            printf("O pid da tarefa é %d\n",pid);
             pids[0] = pid;  // nota: o fork devolve o pid do filho para o pai
 
             
@@ -262,16 +265,21 @@ int execute_pipe(char*** commands, int command_count,
             }
             close(pipe_command_output[1]);
             close(pipe_command_output[0]);
-
-            printf("TESTE PRINTS\n");
             wait(NULL);
+            printf("A desligar o alarme");
             alarm(0);
         }else{
+            int n_pids=0;
+            pids_count = command_count * 2; //pois criam-se dois processos por instrução
+            pids = malloc(sizeof(int) * pids_count);
+            memset(pids,-1,pids_count);
+
             int fildes[command_count - 1][2];
 
             if (pipe(fildes[0]) == -1) {
                 return -1;
             }
+
             if ((pid = fork()) == 0) {
                 close(fildes[0][0]);
                 dup2(fildes[0][1], 1);
@@ -280,7 +288,33 @@ int execute_pipe(char*** commands, int command_count,
                 _exit(1);
             }
             close(fildes[0][1]);
-            pids[0] = pid;
+            pids[n_pids++] = pid;
+
+            int aux_pipe[2];
+            if(pipe(aux_pipe) == -1){
+                return -1;
+            }
+
+            //fork para o -i, liga o pipe auxiliar do comando anterior ao próximo
+            if((pid=fork())==0){
+                if (signal(SIGALRM, communication_limit_handler) == SIG_ERR){
+                    perror("sigchild son error\n");
+                }
+                int n_bytes;
+                char buf[1024];
+                close(aux_pipe[0]);
+                alarm(time_limit_communication);
+                while((n_bytes = read(fildes[0][0],buf,1024))>0){
+                    write(aux_pipe[1],buf,n_bytes);
+                    alarm(time_limit_communication);
+                }
+                close(aux_pipe[1]);
+                _exit(1);
+            }
+            close(aux_pipe[1]);
+            pids[n_pids++] = pid;
+            
+
             int i=1;
             for (i = 1; i < command_count - 1; i++) {
                 if (pipe(fildes[i]) == -1) {
@@ -291,84 +325,87 @@ int execute_pipe(char*** commands, int command_count,
                         perror("sigchild son error\n");
                     }
                     close(fildes[i][0]);
-                    dup2(fildes[i - 1][0], 0);
                     close(fildes[i - 1][0]);
+                    dup2(aux_pipe[0],0);
+                    close(aux_pipe[0]);
 
-                    char buf[5];
-                    int n_bytes;
-                    int fildes_aux[2];
-                    if(pipe(fildes_aux)==-1){
-                        return -1;
-                    }
-
-                    alarm(time_limit_communication);
-                    while((n_bytes = read(0,buf,5))>0){
-                        alarm(time_limit_communication); //activa o alarme novamente
-                        write(fildes_aux[1],buf,n_bytes);
-                    // write(1,buf,n_bytes);
-                    }
-                    //alarm(0); // desliga o alarme no final de toda a leitura
                     
-                    close(fildes_aux[1]);
-                    dup2(fildes_aux[0],0);
-                    close(fildes_aux[0]);
                     dup2(fildes[i][1], 1);
                     close(fildes[i][1]);
 
                     execvp(commands[i][0], commands[i]);
                     _exit(1);
                 }
-                pids[i] = pid;
+                close(aux_pipe[0]);
+                pids[n_pids++] = pid;
                 close(fildes[i - 1][0]);
                 close(fildes[i][1]);
+
+
+
+                if(pipe(aux_pipe) == -1){
+                    return -1;
+                }
+
+                //fork para o -i, liga o pipe auxiliar do comando anterior ao próximo
+                if((pid=fork())==0){
+                    if (signal(SIGALRM, communication_limit_handler) == SIG_ERR){
+                        perror("sigchild son error\n");
+                    }
+                    int n_bytes;
+                    char buf[1024];
+                    close(aux_pipe[0]);
+                    alarm(time_limit_communication);
+                    while((n_bytes = read(fildes[i][0],buf,1024))>0){
+                        alarm(time_limit_communication);
+                        write(aux_pipe[1],buf,n_bytes);
+                        write(1,buf,n_bytes);
+                    }
+                    close(aux_pipe[1]);
+                    _exit(1);
+                }
+                close(aux_pipe[1]);
+                pids[n_pids++] = pid;
             }
 
+            
             if ((pid = fork()) == 0) {
                 if (signal(SIGALRM, communication_limit_handler) == SIG_ERR){
                     perror("sigchild son error\n");
                 }
-                dup2(fildes[i - 1][0], 0);
+
                 close(fildes[i - 1][0]);
-
-                char buf[5];
-                int n_bytes;
-                int fildes_aux[2];
-                if(pipe(fildes_aux)==-1){
-                    return -1;
-                }
-
-                alarm(time_limit_communication);
-
-                while((n_bytes = read(0,buf,5))>0){
-                    alarm(time_limit_communication); //activa o alarme novamente
-                    write(fildes_aux[1],buf,n_bytes);
-                //  write(1,buf,n_bytes);
-                }
-                //alarm(0); // desliga o alarme no final de toda a leitura
-                
-                close(fildes_aux[1]);
-                dup2(fildes_aux[0],0);
-                close(fildes_aux[0]);
+                dup2(aux_pipe[0],0);
+                close(aux_pipe[0]);
 
                 dup2(pipe_command_output[1],1);
                 close(pipe_command_output[1]);
                 execvp(commands[i][0], commands[i]);
                 _exit(1);
             }
+            pids[n_pids++] = pid;
 
-            output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
+            close(aux_pipe[0]);
             close(pipe_command_output[1]);
-            while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
+            
+            if((pid=fork())==0){
+                output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
+                alarm(time_limit_communication);
+                while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
+                    alarm(time_limit_communication);
                     buf_total_size += write(output_fd,buf,buf_line_size);
                     write(1,buf,buf_line_size);
-	        }
-            update_output_index(buf_total_size);
-            close(pipe_command_output[1]);
+                }
+                update_output_index(buf_total_size);
+                close(output_fd);
+                close(pipe_command_output[0]);
+            }
             close(pipe_command_output[0]);
-            close(output_fd);
-            pids[i] = pid;  // i == command_count-1
+
+            
             close(fildes[i-1][0]);
-            for (int j = 0; j < command_count; j++) {
+            for (int j = 0; j < n_pids; j++) {
+                printf("a esperar o indice: %d de %d\n",j,n_pids);
                 wait(NULL);
             }
             alarm(0);
