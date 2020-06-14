@@ -55,8 +55,8 @@ ssize_t readln2(int fd, char *line, size_t size){
 
 void update_output_index(int size){
 	int output_fd;
-	if ((output_fd = open("logs.idx", O_RDWR , 0666)) < 0){
-		output_fd = open("logs.idx", O_RDWR | O_CREAT, 0666);
+	if ((output_fd = open("log.idx", O_RDWR , 0666)) < 0){
+		output_fd = open("log.idx", O_RDWR | O_CREAT, 0666);
 		write(output_fd,"0,\n",3);
 		lseek(output_fd,0,SEEK_SET);
 	}
@@ -540,7 +540,7 @@ int main(){
     }
 
     //inicializar ficheiro de indices
-     int output_fd = open("logs.idx", O_RDWR | O_TRUNC, 0666);
+     int output_fd = open("log.idx", O_RDWR | O_TRUNC, 0666);
      write(output_fd,"0,\n",3);
      close(output_fd);
     //inicializar ficheiro de outputs
