@@ -55,12 +55,11 @@ ssize_t readln2(int fd, char *line, size_t size){
 
 void update_output_index(int size){
 	int output_fd;
-	if ((output_fd = open("output_index.txt", O_RDWR , 0666)) < 0){
-		output_fd = open("output_index.txt", O_RDWR | O_CREAT, 0666);
+	if ((output_fd = open("output_index.idx", O_RDWR , 0666)) < 0){
+		output_fd = open("output_index.idx", O_RDWR | O_CREAT, 0666);
 		write(output_fd,"0,\n",3);
 		lseek(output_fd,0,SEEK_SET);
 	}
-	printf("SIZE : %d \n\n",size);
 	char linha [1024];
 	int linha_length;
 	int linha_length2 = readln2(output_fd,linha,1024);
@@ -221,7 +220,6 @@ char*** separate_commands(char* str, int* number_commands,
 
 int execute_pipe(char*** commands, int command_count,
                  int* size_commands_array) {
-    int TESTES_FDS = open("TESTES.txt", O_CREAT | O_APPEND | O_RDWR, 0666);
     pid_t pid;
     char buf [1024];
     int buf_line_size = 0;
@@ -356,15 +354,10 @@ int execute_pipe(char*** commands, int command_count,
            }*/
  	   output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
 	   close(pipe_command_output[1]);
-	   printf("ANTES DO LOOP\n\n");
 	   while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
 			buf_total_size += write(output_fd,buf,buf_line_size);
 			write(1,buf,buf_line_size);
 	    }
-	   printf("DEPOIS DO LOOP\n\n");
-	    char teste [20];
-	    int teste_t = sprintf(teste,"TAMANHO : %d\n", buf_total_size);
-	    write(1,teste,teste_t);
 	    update_output_index(buf_total_size);
 	    close(pipe_command_output[1]);
 	    close(pipe_command_output[0]);
@@ -547,9 +540,14 @@ int main(){
         perror("SIGUSR2 error\n");
     }
 
-
-
-
+    //inicializar ficheiro de indices
+     int output_fd = open("output_index.idx", O_RDWR | O_TRUNC, 0666);
+     write(output_fd,"0,\n",3);
+     close(output_fd);
+    //inicializar ficheiro de outputs
+     output_fd = open("output.txt", O_RDWR | O_TRUNC, 0666);
+     close(output_fd);
+     
     int fifo_client_to_server_fd;
     //int fifo_server_to_client_fd;
     while(fifo_client_to_server_fd = open("fifo_client_to_server",O_RDONLY)){ // para ir lendo continuamente

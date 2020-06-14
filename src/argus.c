@@ -46,7 +46,7 @@ ssize_t readln(int fd, char* line, size_t size) {
 //recebe um index, e devolve o numero de bytes que devem ser offset no lseek para obter o output de um comando. returns -1 in case the index file doesn't exist.
 int get_offset_for_output(int index, char** line){
 	int fd;
-	if ((fd = open("output_index.txt",O_RDONLY)) < 0)
+	if ((fd = open("output_index.idx",O_RDONLY)) < 0)
 		return -1;
 	char linha [1024];
 	int index_line_size = readln2(fd,linha,1024); //ler a linha
