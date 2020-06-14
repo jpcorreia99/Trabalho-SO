@@ -67,6 +67,7 @@ int get_offset_for_output(int index, char** line){
 		return -1;
 	*line = malloc((end - start) * sizeof(char));
 	lseek(fd,start,SEEK_SET);
+	printf("RES = %d\n",end-start);
 	int res = read(fd,*line,(end-start));
 	close(fd);
 	return res;

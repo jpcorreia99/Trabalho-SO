@@ -2,6 +2,7 @@ argus
 argus.c
 argusd
 argusd.c
+argusd (cópia)
 criar_fifo.c
 debug
 fifo_client_to_server
@@ -13,12 +14,15 @@ main2.c
 Makefile
 output.txt
 test.c
+testeGetLine
 testeLinha.c
 TESTES.txt
+testeTermino
 argus
 argus.c
 argusd
 argusd.c
+argusd (cópia)
 criar_fifo.c
 debug
 fifo_client_to_server
@@ -30,6 +34,7 @@ main2.c
 Makefile
 output.txt
 test.c
+testeGetLine
 testeLinha.c
 TESTES.txt
-     17      17     179
+testeTermino

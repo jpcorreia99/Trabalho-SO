@@ -53,11 +53,57 @@ ssize_t readln2(int fd, char *line, size_t size){
   return i + j;
  }
 
+void update_output_index2(int size, int index){
+	int output_fd;
+	printf("INDEX : %d\n",index);
+	output_fd = open("log.idx", O_RDWR | O_CREAT, 0666);
+	char linha [1024];
+	int index_line_size = readln2(output_fd,linha,1024);
+	char *token = strtok(linha,",");
+	char *penultimate_token = token; 
+	token = strtok(NULL,",");
+	int sum = 0;
+	char buf[24];
+	int aux_size;
+	int current_size;
+	while (token != NULL){
+		if (index = 1) sum = size;
+		current_size = strtol(penultimate_token,NULL,10) + sum;
+		aux_size = sprintf(buf,"%d,",current_size);
+		write(output_fd,buf,aux_size);
+		token = strtok(NULL,",");
+		index--;	
+	}
+	current_size = strtol(penultimate_token,NULL,10) + sum;
+	aux_size = sprintf(buf,"%d,",current_size);
+	write(output_fd,buf,aux_size);
+	close(output_fd);
+}
+/*
+
+
+char* read_fifo(int fifo_fd,int* bytes_read){
+    *bytes_read=0;
+    int total_bytes_read=0;
+    char* res = malloc(sizeof(char)*1024);
+    int n_bytes_read;
+    while((n_bytes_read=read(fifo_fd,res+total_bytes_read,1024))>0){
+        total_bytes_read +=n_bytes_read;
+        if(n_bytes_read==1024){
+            res = realloc(res,sizeof(char) * (total_bytes_read * 2));
+        }
+    }
+    res[total_bytes_read]='\0';
+    *bytes_read = total_bytes_read;
+    return res;
+}*/
+
+
 void update_output_index(int size){
 	int output_fd;
 	if ((output_fd = open("log.idx", O_RDWR , 0666)) < 0){
 		output_fd = open("log.idx", O_RDWR | O_CREAT, 0666);
-		write(output_fd,"0,\n",3);
+		write(output_fd,"0,",2);
 		lseek(output_fd,0,SEEK_SET);
 	}
 	char linha [1024];
@@ -262,7 +308,8 @@ int execute_pipe(char*** commands, int command_count,
                 buf_total_size += write(output_fd,buf,buf_line_size);
             }
             if (buf_total_size >= 0){
-	    	    update_output_index(buf_total_size);
+	    	//    update_output_index(buf_total_size);
+		update_output_index2(buf_total_size,number_records + 1);
             }
             close(pipe_command_output[1]);
             close(pipe_command_output[0]);
@@ -399,7 +446,8 @@ int execute_pipe(char*** commands, int command_count,
                     write(1,buf,buf_line_size);
                 }
                 if (buf_total_size >= 0){
-                    update_output_index(buf_total_size);
+                  //  update_output_index(buf_total_size);
+			update_output_index2(buf_total_size,number_records +1 );
                 }
                 close(output_fd);
                 close(pipe_command_output[0]);
@@ -588,7 +636,7 @@ int main(){
 
     //inicializar ficheiro de indices
      int output_fd = open("log.idx", O_CREAT | O_RDWR | O_TRUNC, 0666);
-     write(output_fd,"0,\n",3);
+     write(output_fd,"0,",2);
      close(output_fd);
     //inicializar ficheiro de outputs
      output_fd = open("output.txt", O_CREAT | O_RDWR | O_TRUNC, 0666);
