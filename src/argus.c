@@ -14,6 +14,27 @@
 //meter as funções todas em ingles
 //mudar o handler do sigchl pequeno para não ser o ignora mas simplesmente dar reset ao comportamento
 
+// le uma linha para o line.
+ssize_t readln2(int fd, char *line, size_t size){
+  int i = 0; ssize_t res; int stop = 1; int j = 0; // int keepReading = 1; i
+  while(i < size-1 && stop && (res = read(fd,&(line[i]),200)) ) {
+     stop = stop;	
+     if (res){
+      for(j = 0; j < res && i+j < size && stop; j++){
+        if (line [i+j] == '\n') stop = 0; 
+        }
+      }
+      if (stop) i += res; 
+     // printf("Linha nº %d: %s\n",counter, line);
+     }
+  line[i+j] = '\0';
+  //off_t lseek(int fd, off_t offset, int whence);
+  //printf("Linha nº %d: %s\n",counter, line);
+  if (!stop) lseek(fd, -res+j, SEEK_CUR);
+  return i + j;
+ }
+
+
 // acabar de criar a ajuda para o prompt e verificar que um comando não existe
 ssize_t readln(int fd, char* line, size_t size) {
         int i;
@@ -22,7 +43,34 @@ ssize_t readln(int fd, char* line, size_t size) {
         return i;
     }
 
-
+//recebe um index, e devolve o numero de bytes que devem ser offset no lseek para obter o output de um comando. returns -1 in case the index file doesn't exist.
+int get_offset_for_output(int index, char** line){
+	int fd;
+	if ((fd = open("output_index.txt",O_RDONLY)) < 0)
+		return -1;
+	char linha [1024];
+	int index_line_size = readln2(fd,linha,1024); //ler a linha
+	char *token = strtok(linha,",");
+	char *penultimate_token = token; //sera necessario o valor onde começa (pen_token) e onde acaba (token)
+	if (token == NULL) return -1; // nao ha nada escrito no ficheiro
+	token = strtok(NULL,",");
+	while (token != NULL && index > 1){
+		penultimate_token = token;
+		token = strtok(NULL,",");
+		index--;	
+	}
+	if (token == NULL) return -1; // pediu um indice maior do que o tamanho do array
+	int start = strtol(penultimate_token,NULL,10);
+	int end = strtol(token,NULL,10);
+	close(fd);
+	if ((fd = open("output.txt",O_RDONLY)) < 0)
+		return -1;
+	*line = malloc((end - start) * sizeof(char));
+	lseek(fd,start,SEEK_SET);
+	int res = read(fd,*line,(end-start));
+	close(fd);
+	return res;
+}
 
 char* read_line(int fd,int* bytes_read){
     *bytes_read=0;
@@ -419,6 +467,15 @@ int main(int argc, char* argv[]){
             }else if(strcmp(comando[0],"-h")==0) {
                 show_help();
             }else {
+		char *outputSearch = NULL;
+	        int index = strtol(comando[1],NULL,10);
+		int output_size;
+		if ((output_size = get_offset_for_output(index, &outputSearch)) > 0){
+			write(1,outputSearch,output_size);	
+			free(outputSearch);
+		}
+		else 
+			perror("ERRO\n");
                 printf("COLOCAR O -O AQUI\n");
             }
             
@@ -441,7 +498,16 @@ int main(int argc, char* argv[]){
                 }else if(strcmp(separated_line[0],"-h")==0){
                     show_help_prompt();
                 }else if(strcmp(separated_line[0],"-o")==0){
-                    printf("OPÇÃO -O AQUI\n");
+			char *outputSearch = NULL;
+	        	int index = strtol(separated_line[1],NULL,10);
+			int output_size;
+			if ((output_size = get_offset_for_output(index, &outputSearch)) > 0){
+				write(1,outputSearch,output_size);	
+				free(outputSearch);
+			}
+			else 
+				perror("ERRO\n");
+                	printf("OPÇÃO -O AQUI\n");
                 }else{
                     char* comando_concatenado =  concatena_comando(separated_line,number_of_sublines);
                     int fd;
