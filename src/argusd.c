@@ -4,7 +4,6 @@
 //./a.out -e "ls | wc"
 //./a.out -e "grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq | wc -l"
 
-//mudar leitura do pipe client -> server para não ser só read
 
 
 
@@ -562,9 +561,9 @@ int main(){
      
     int fifo_client_to_server_fd;
     //int fifo_server_to_client_fd;
-    while(fifo_client_to_server_fd = open("fifo_client_to_server",O_RDONLY)){ // para ir lendo continuamente
+    while(fifo_client_to_server_fd = open(FIFO_CLIENT_TO_SERVER,O_RDONLY)){ // para ir lendo continuamente
 
-        if((fifo_server_to_client_fd = open("fifo_server_to_client",O_WRONLY))<0){
+        if((fifo_server_to_client_fd = open(FIFO_SERVER_TO_CLIENT,O_WRONLY))<0){
             perror("open");
             return 1;
         }

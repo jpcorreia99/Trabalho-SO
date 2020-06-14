@@ -1,15 +1,10 @@
 #include "argus.h"
 
 
+//mudar output.txt para output.idx e mudar o nome readln2
+//completar o relatório com os testes
 
-//remover o tempo de espera na escrita
-//meter as funções todas em ingles
-//mudar o handler do sigchl pequeno para não ser o ignora mas simplesmente dar reset ao comportamento
-
-
-
-
-//recebe um index, e devolve o numero de bytes que devem ser offset no lseek para obter o output de um comando. returns -1 in case the index file doesn't exist.
+//recebe um index, e devolve o numero de bytes que devem ser offset no lseek para obter o output de um command. returns -1 in case the index file doesn't exist.
 int get_offset_for_output(int index, char** line){
 	int fd;
 	if ((fd = open("log.idx",O_RDONLY)) < 0)
@@ -99,86 +94,86 @@ bool is_task_number_valid(char* s){
     }
 }
 
-
-char* concatena_comando(char** comando,int numero_componentes){
+// concatena os vários componenetes de um comando
+char* concat_command(char** command,int numero_componentes){
     if(numero_componentes==2){
-        int size_string_concated = strlen(comando[0]) + 2 + strlen(comando[1]);
+        int size_string_concated = strlen(command[0]) + 2 + strlen(command[1]);
         char *jointCommand = malloc(sizeof(char)* size_string_concated);
-        snprintf(jointCommand, size_string_concated, "%s %s", comando[0], comando[1]);
+        snprintf(jointCommand, size_string_concated, "%s %s", command[0], command[1]);
         return jointCommand;
     }else{
-        return strdup(comando[0]);
+        return strdup(command[0]);
     }
 }
 
 
-
-bool comando_valido(char** comando, int numero_componentes){
-    if(numero_componentes>= 1){
-            if(strcmp(comando[0], "-m")==0 || strcmp(comando[0],"-i")==0){ // adicionar aqui tempo-inactividade && tempo-execucao
-                if(numero_componentes==2){
-                    if(!is_limit_valid(comando[1])){
+// verifica se um comando enviado através da linha de comando é válido
+bool valid_command(char** command, int number_of_components){
+    if(number_of_components>= 1){
+            if(strcmp(command[0], "-m")==0 || strcmp(command[0],"-i")==0){ // adicionar aqui tempo-inactividade && tempo-execucao
+                if(number_of_components==2){
+                    if(!is_limit_valid(command[1])){
                         write(1,"Limite inválido\n",strlen("Limite inválido\n"));
                         return false;
                     }
                     return true;
-                }else if (numero_componentes == 1){
+                }else if (number_of_components == 1){
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
                     return false;
                 }else{
                     write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
                     return false;
                 }
-            }else if(strcmp(comando[0],"-e")==0){
-                if(numero_componentes==1){
+            }else if(strcmp(command[0],"-e")==0){
+                if(number_of_components==1){
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
                     return false;
                 }
                 return true;
-            }else if(strcmp(comando[0],"-l")==0){
-                if(numero_componentes>1){
+            }else if(strcmp(command[0],"-l")==0){
+                if(number_of_components>1){
                     write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
                     return false;
                 }
                 return true;
-            }else if(strcmp(comando[0],"-r")==0){
-                if(numero_componentes>1){
+            }else if(strcmp(command[0],"-r")==0){
+                if(number_of_components>1){
                     write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
                     return false;
                 }
                 return true;
-            }else if(strcmp(comando[0],"-t")==0){
-                if(numero_componentes==2){
-                    if(!is_task_number_valid(comando[1])){
+            }else if(strcmp(command[0],"-t")==0){
+                if(number_of_components==2){
+                    if(!is_task_number_valid(command[1])){
                         write(1,"Número inválido\n",strlen("Número inválido\n"));
                         return false;
                     }
                     return true;
-                }else if(numero_componentes<2){
+                }else if(number_of_components<2){
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
                     return false;
-                }else if(numero_componentes>2){
+                }else if(number_of_components>2){
                     write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
                     return false;
                 }
-            }else if(strcmp(comando[0],"-h")==0){
-                if(numero_componentes>1){
+            }else if(strcmp(command[0],"-h")==0){
+                if(number_of_components>1){
                     write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
                     return false;
                 }else{
                     return true;
                 } 
-            }else if(strcmp(comando[0],"-o")==0){
-                if(numero_componentes==2){
-                    if(!is_task_number_valid(comando[1])){
+            }else if(strcmp(command[0],"-o")==0){
+                if(number_of_components==2){
+                    if(!is_task_number_valid(command[1])){
                         write(1,"Número inválido\n",strlen("Número inválido\n"));
                         return false;
                     }
                     return true;
-                }else if(numero_componentes<2){
+                }else if(number_of_components<2){
                     write(1,"Falta de argumentos\n",strlen("Falta de argumentos\n"));
                     return false;
-                }else if(numero_componentes>2){
+                }else if(number_of_components>2){
                     write(1,"Excesso de argumentos\n",strlen("Excesso de argumentos\n"));
                     return false;
                 }
@@ -193,7 +188,7 @@ bool comando_valido(char** comando, int numero_componentes){
     return false;
 }
 
-
+// verifica se um comando enviado através da shell interpretada segue as devidas restrições
 bool valid_comand_prompt(char** command, int number_of_components){
     if(number_of_components>= 1){
             if(strcmp(command[0], "-m")==0 || strcmp(command[0],"-i")==0){
@@ -272,7 +267,7 @@ bool valid_comand_prompt(char** command, int number_of_components){
                 return false;
             }
     }else{
-        write(1,"Não foi introduzido um comando\n",strlen("Não foi introduzido um comando\n"));
+        write(1,"Não foi introduzido um command\n",strlen("Não foi introduzido um command\n"));
         return false;
     }
 }
@@ -335,8 +330,6 @@ void show_help_prompt(){
 
 
 // separates the line which was read by it's spaces
-
-//NOTA, MUDAR O MALLOC
 char** separate_line(char* line_to_separate, int* number_of_sublines){
     char* rest;
     char* token = strtok_r(line_to_separate," ",&rest);
@@ -384,7 +377,7 @@ char** separate_line(char* line_to_separate, int* number_of_sublines){
 // abre um fifo que irá ler a resposta dada pelo servidor
 int read_answer(){
     int fifo_server_to_client_fd;
-    if((fifo_server_to_client_fd = open("fifo_server_to_client",O_RDONLY))<0){
+    if((fifo_server_to_client_fd = open(FIFO_SERVER_TO_CLIENT,O_RDONLY))<0){
         perror("open");
         return 1;
     }
@@ -404,31 +397,31 @@ int main(int argc, char* argv[]){
     }
 
     if(argc>1){
-        char** comando = argv+1;
+        char** command = argv+1;
         int numero_componentes = argc-1;
-        if(comando_valido(comando, numero_componentes)){
-            if(strcmp(comando[0],"-h")!=0 && strcmp(comando[0],"-o")!=0){
-                char* comando_concatenado =  concatena_comando(comando, numero_componentes);
+        if(valid_command(command, numero_componentes)){
+            if(strcmp(command[0],"-h")!=0 && strcmp(command[0],"-o")!=0){
+                char* concated_command =  concat_command(command, numero_componentes);
 
                 int fd;
-                if((fd = open("fifo_client_to_server",O_WRONLY))<0){
+                if((fd = open(FIFO_CLIENT_TO_SERVER, O_WRONLY))<0){
                     perror("open");
                     return 1;
                 }
-                //write(1,"Open is done\n",strlen("Open is done\n"));
-                if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
+
+                if(write(fd,concated_command,strlen(concated_command))<0){
                     perror("Write");
                     return 1;
                 }
                 close(fd);
                 read_answer();
                 
-                free(comando_concatenado);
-            }else if(strcmp(comando[0],"-h")==0) {
+                free(concated_command);
+            }else if(strcmp(command[0],"-h")==0) {
                 show_help();
             }else {
                 char *outputSearch = NULL;
-                int index = strtol(comando[1],NULL,10);
+                int index = strtol(command[1],NULL,10);
                 int output_size;
                 if ((output_size = get_offset_for_output(index, &outputSearch)) > 0){
                     write(1,outputSearch,output_size);	
@@ -439,9 +432,9 @@ int main(int argc, char* argv[]){
                     if (output_size == -1)
                         error_msg = "Erro na leitura dos ficheiros de gravação.\n";
                     if (output_size == -3)
-                        error_msg = "O indice dado não está associado ao o output dum comando.\n";
+                        error_msg = "O indice dado não está associado ao o output dum command.\n";
                     if (output_size == -2)
-                        error_msg = "O índice dado corresponde a um comando que não têm output.\n";
+                        error_msg = "O índice dado corresponde a um command que não têm output.\n";
                     write(1,error_msg,strlen(error_msg));
 		        }
             }  
@@ -477,25 +470,25 @@ int main(int argc, char* argv[]){
                         if (output_size == -1)
                             write(1,"Erro na leitura dos ficheiros de gravação.\n",strlen("Erro na leitura dos ficheiros de gravação.\n"));
                         if (output_size == -3)
-                            write(1,"O indice dado não está associado ao o output dum comando.\n",strlen("O indice dado não está associado ao o output dum comando.\n"));
+                            write(1,"O indice dado não está associado ao o output dum command.\n",strlen("O indice dado não está associado ao o output dum command.\n"));
                         if (output_size == -2)
-                            write(1,"O índice dado corresponde a um comando que não têm output.\n",strlen("O índice dado corresponde a um comando que não têm output.\n"));
+                            write(1,"O índice dado corresponde a um command que não têm output.\n",strlen("O índice dado corresponde a um command que não têm output.\n"));
                     }
                 }else{
-                    char* comando_concatenado =  concatena_comando(separated_line,number_of_sublines);
+                    char* concated_command =  concat_command(separated_line,number_of_sublines);
                     int fd;
-                    if((fd = open("fifo_client_to_server",O_WRONLY))<0){
+                    if((fd = open(FIFO_CLIENT_TO_SERVER,O_WRONLY))<0){
                         perror("open");
                         return 1;
                     }
 
-                    if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
+                    if(write(fd,concated_command,strlen(concated_command))<0){
                         perror("Write");
                         return 1;
                     }
                     close(fd);
                     read_answer();
-                    free(comando_concatenado);
+                    free(concated_command);
                 }
             }
             for(int i =0;i<number_of_sublines;i++){
@@ -503,7 +496,6 @@ int main(int argc, char* argv[]){
             }
             free(separated_line);
             free(line);
-            
         }
     }
     return 0;
