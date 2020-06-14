@@ -55,8 +55,8 @@ ssize_t readln2(int fd, char *line, size_t size){
 
 void update_output_index(int size){
 	int output_fd;
-	if ((output_fd = open("output_index.idx", O_RDWR , 0666)) < 0){
-		output_fd = open("output_index.idx", O_RDWR | O_CREAT, 0666);
+	if ((output_fd = open("logs.idx", O_RDWR , 0666)) < 0){
+		output_fd = open("logs.idx", O_RDWR | O_CREAT, 0666);
 		write(output_fd,"0,\n",3);
 		lseek(output_fd,0,SEEK_SET);
 	}
@@ -240,7 +240,6 @@ int execute_pipe(char*** commands, int command_count,
         if (command_count == 1) {
             printf("2\n");
             if ((pid = fork()) == 0) {
-		//printf("AQUI CAralhO\n");
 	        dup2(pipe_command_output[1],1);
 		close(pipe_command_output[1]);
                 execvp(commands[0][0], commands[0]);
@@ -541,7 +540,7 @@ int main(){
     }
 
     //inicializar ficheiro de indices
-     int output_fd = open("output_index.idx", O_RDWR | O_TRUNC, 0666);
+     int output_fd = open("logs.idx", O_RDWR | O_TRUNC, 0666);
      write(output_fd,"0,\n",3);
      close(output_fd);
     //inicializar ficheiro de outputs

@@ -46,7 +46,7 @@ ssize_t readln(int fd, char* line, size_t size) {
 //recebe um index, e devolve o numero de bytes que devem ser offset no lseek para obter o output de um comando. returns -1 in case the index file doesn't exist.
 int get_offset_for_output(int index, char** line){
 	int fd;
-	if ((fd = open("output_index.idx",O_RDONLY)) < 0)
+	if ((fd = open("logs.idx",O_RDONLY)) < 0)
 		return -1;
 	char linha [1024];
 	int index_line_size = readln2(fd,linha,1024); //ler a linha
@@ -474,9 +474,12 @@ int main(int argc, char* argv[]){
 			write(1,outputSearch,output_size);	
 			free(outputSearch);
 		}
-		else 
-			perror("ERRO\n");
-                printf("COLOCAR O -O AQUI\n");
+		else {
+			char error_msg[100];
+			int error_n = sprintf(error_msg,"Erro. Não foi possível aceder ao indice indicado.\n");
+			if (error_n > 0) write(1,error_msg,error_n);
+			//perror("ERRO\n");
+		}
             }
             
         }
@@ -505,9 +508,12 @@ int main(int argc, char* argv[]){
 				write(1,outputSearch,output_size);	
 				free(outputSearch);
 			}
-			else 
-				perror("ERRO\n");
-                	printf("OPÇÃO -O AQUI\n");
+			else {
+				char error_msg[100];
+				int error_n = sprintf(error_msg,"Erro. Não foi possível aceder ao indice indicado.\n");
+				if (error_n > 0) write(1,error_msg,error_n);
+			}
+
                 }else{
                     char* comando_concatenado =  concatena_comando(separated_line,number_of_sublines);
                     int fd;
