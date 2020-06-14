@@ -1,46 +1,13 @@
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <string.h>
-#include <stdbool.h>
+#include "argus.h"
 
 
-//gcc -o smecep -lreadline argus.c
 
 //remover o tempo de espera na escrita
 //meter as funções todas em ingles
 //mudar o handler do sigchl pequeno para não ser o ignora mas simplesmente dar reset ao comportamento
 
-// le uma linha para o line.
-ssize_t readln2(int fd, char *line, size_t size){
-  int i = 0; ssize_t res; int stop = 1; int j = 0; // int keepReading = 1; i
-  while(i < size-1 && stop && (res = read(fd,&(line[i]),200)) ) {
-     if (res){
-      for(j = 0; j < res && i+j < size && stop; j++){
-        if (line [i+j] == '\n') stop = 0; 
-        }
-      }
-      if (stop) i += res; 
-     // printf("Linha nº %d: %s\n",counter, line);
-     }
-  line[i+j] = '\0';
-  //off_t lseek(int fd, off_t offset, int whence);
-  //printf("Linha nº %d: %s\n",counter, line);
-  if (!stop) lseek(fd, -res+j, SEEK_CUR);
-  return i + j;
- }
 
 
-// acabar de criar a ajuda para o prompt e verificar que um comando não existe
-ssize_t readln(int fd, char* line, size_t size) {
-        int i;
-        for (i = 0; read(fd, line + i, 1) && line[i] != '\n' && i < size; i++)
-            ;
-        return i;
-    }
 
 //recebe um index, e devolve o numero de bytes que devem ser offset no lseek para obter o output de um comando. returns -1 in case the index file doesn't exist.
 int get_offset_for_output(int index, char** line){
@@ -417,20 +384,16 @@ char** separate_line(char* line_to_separate, int* number_of_sublines){
 
 // abre um fifo que irá ler a resposta dada pelo servidor
 int read_answer(){
-    sleep(1);
     int fifo_server_to_client_fd;
-    printf("A abrir o fifo de escrita no lado do cliente\n");
     if((fifo_server_to_client_fd = open("fifo_server_to_client",O_RDONLY))<0){
         perror("open");
         return 1;
     }
-    printf("Open\n");
     int n_bytes =0;
     char buf[1024];
     while((n_bytes = read(fifo_server_to_client_fd,buf,1024))>0){
         write(1,buf,n_bytes);
     }
-    printf("Pós leitura\n");
     close(fifo_server_to_client_fd);
     return 0;
 }
@@ -445,9 +408,7 @@ int main(int argc, char* argv[]){
         char** comando = argv+1;
         int numero_componentes = argc-1;
         if(comando_valido(comando, numero_componentes)){
-            printf("Comando válido\n");
             if(strcmp(comando[0],"-h")!=0 && strcmp(comando[0],"-o")!=0){
-                printf("1\n");
                 char* comando_concatenado =  concatena_comando(comando, numero_componentes);
 
                 int fd;
@@ -455,7 +416,6 @@ int main(int argc, char* argv[]){
                     perror("open");
                     return 1;
                 }
-                write(1,"Open is done\n",strlen("Open is done\n"));
                 //write(1,"Open is done\n",strlen("Open is done\n"));
                 if(write(fd,comando_concatenado,strlen(comando_concatenado))<0){
                     perror("Write");
@@ -509,7 +469,6 @@ int main(int argc, char* argv[]){
                     int index = strtol(separated_line[1],NULL,10);
                     int output_size;
                     if ((output_size = get_offset_for_output(index, &outputSearch)) > 0){
-                        printf("Output size: %d\n", output_size);
                         write(1,outputSearch,output_size);	
                         free(outputSearch);
                     }
