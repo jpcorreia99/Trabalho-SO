@@ -260,11 +260,13 @@ int execute_pipe(char*** commands, int command_count,
             close(pipe_command_output[1]);
             while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
                 buf_total_size += write(output_fd,buf,buf_line_size);
-                write(1,buf,buf_line_size);
-                update_output_index(buf_total_size);
+            }
+            if (buf_total_size >= 0){
+	    	    update_output_index(buf_total_size);
             }
             close(pipe_command_output[1]);
             close(pipe_command_output[0]);
+
             wait(NULL);
             printf("A desligar o alarme");
             alarm(0);
@@ -396,7 +398,9 @@ int execute_pipe(char*** commands, int command_count,
                     buf_total_size += write(output_fd,buf,buf_line_size);
                     write(1,buf,buf_line_size);
                 }
-                update_output_index(buf_total_size);
+                if (buf_total_size >= 0){
+                    update_output_index(buf_total_size);
+                }
                 close(output_fd);
                 close(pipe_command_output[0]);
             }
@@ -583,14 +587,15 @@ int main(){
     }
 
     //inicializar ficheiro de indices
-     int output_fd = open("log.idx", O_RDWR | O_TRUNC, 0666);
+     int output_fd = open("log.idx", O_CREAT | O_RDWR | O_TRUNC, 0666);
      write(output_fd,"0,\n",3);
      close(output_fd);
     //inicializar ficheiro de outputs
-     output_fd = open("output.txt", O_RDWR | O_TRUNC, 0666);
+     output_fd = open("output.txt", O_CREAT | O_RDWR | O_TRUNC, 0666);
      close(output_fd);
      
     int fifo_client_to_server_fd;
+    printf("Chegou ao inicio\n");
     //int fifo_server_to_client_fd;
     while(fifo_client_to_server_fd = open("fifo_client_to_server",O_RDONLY)){ // para ir lendo continuamente
         printf("\n\n\nNovo Ciclo:\n");

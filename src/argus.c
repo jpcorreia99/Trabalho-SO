@@ -18,7 +18,6 @@
 ssize_t readln2(int fd, char *line, size_t size){
   int i = 0; ssize_t res; int stop = 1; int j = 0; // int keepReading = 1; i
   while(i < size-1 && stop && (res = read(fd,&(line[i]),200)) ) {
-     stop = stop;	
      if (res){
       for(j = 0; j < res && i+j < size && stop; j++){
         if (line [i+j] == '\n') stop = 0; 
@@ -59,9 +58,10 @@ int get_offset_for_output(int index, char** line){
 		token = strtok(NULL,",");
 		index--;	
 	}
-	if (token == NULL) return -1; // pediu um indice maior do que o tamanho do array
+	if (token == NULL) return -3; // pediu um indice maior do que o tamanho do array
 	int start = strtol(penultimate_token,NULL,10);
 	int end = strtol(token,NULL,10);
+	if (start == end) return -2;
 	close(fd);
 	if ((fd = open("output.txt",O_RDONLY)) < 0)
 		return -1;
@@ -467,21 +467,24 @@ int main(int argc, char* argv[]){
             }else if(strcmp(comando[0],"-h")==0) {
                 show_help();
             }else {
-		char *outputSearch = NULL;
-	        int index = strtol(comando[1],NULL,10);
-		int output_size;
-		if ((output_size = get_offset_for_output(index, &outputSearch)) > 0){
-			write(1,outputSearch,output_size);	
-			free(outputSearch);
-		}
-		else {
-			char error_msg[100];
-			int error_n = sprintf(error_msg,"Erro. Não foi possível aceder ao indice indicado.\n");
-			if (error_n > 0) write(1,error_msg,error_n);
-			//perror("ERRO\n");
-		}
-            }
-            
+                char *outputSearch = NULL;
+                int index = strtol(comando[1],NULL,10);
+                int output_size;
+                if ((output_size = get_offset_for_output(index, &outputSearch)) > 0){
+                    write(1,outputSearch,output_size);	
+                    free(outputSearch);
+                }else {
+                    char *error_msg;
+                    int error_n;
+                    if (output_size == -1)
+                        error_msg = "Erro na leitura dos ficheiros de gravação.\n";
+                    if (output_size == -3)
+                        error_msg = "O indice dado não está associado ao o output dum comando.\n";
+                    if (output_size == -2)
+                        error_msg = "O índice dado corresponde a um comando que não têm output.\n";
+                    write(1,error_msg,strlen(error_msg));
+		        }
+            }  
         }
     }else{
         while(1){
@@ -501,19 +504,24 @@ int main(int argc, char* argv[]){
                 }else if(strcmp(separated_line[0],"-h")==0){
                     show_help_prompt();
                 }else if(strcmp(separated_line[0],"-o")==0){
-			char *outputSearch = NULL;
-	        	int index = strtol(separated_line[1],NULL,10);
-			int output_size;
-			if ((output_size = get_offset_for_output(index, &outputSearch)) > 0){
-				write(1,outputSearch,output_size);	
-				free(outputSearch);
-			}
-			else {
-				char error_msg[100];
-				int error_n = sprintf(error_msg,"Erro. Não foi possível aceder ao indice indicado.\n");
-				if (error_n > 0) write(1,error_msg,error_n);
-			}
-
+                    char *outputSearch = NULL;
+                    int index = strtol(separated_line[1],NULL,10);
+                    int output_size;
+                    if ((output_size = get_offset_for_output(index, &outputSearch)) > 0){
+                        printf("Output size: %d\n", output_size);
+                        write(1,outputSearch,output_size);	
+                        free(outputSearch);
+                    }
+                    else{
+                        char *error_msg;
+                        printf("Output size: %d\n",output_size);
+                        if (output_size == -1)
+                            write(1,"Erro na leitura dos ficheiros de gravação.\n",strlen("Erro na leitura dos ficheiros de gravação.\n"));
+                        if (output_size == -3)
+                            write(1,"O indice dado não está associado ao o output dum comando.\n",strlen("O indice dado não está associado ao o output dum comando.\n"));
+                        if (output_size == -2)
+                            write(1,"O índice dado corresponde a um comando que não têm output.\n",strlen("O índice dado corresponde a um comando que não têm output.\n"));
+                    }
                 }else{
                     char* comando_concatenado =  concatena_comando(separated_line,number_of_sublines);
                     int fd;
