@@ -1,9 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <fcntl.h>
+
+#include "argus.h"
+
 //./a.out -e "ls | wc"
 //./a.out -e "grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq | wc -l"
 
@@ -13,45 +10,20 @@
 
 int* pids;
 int pids_count;
-int time_limit_execute = 10;
-int time_limit_communication = 5;
+int time_limit_execute = 100;
+int time_limit_communication = 500;
 int forced_termination = 0;
 int timeout_termination = 0;
 int timeout_communication = 0;
 
 int fifo_server_to_client_fd=-1;
 
-typedef struct record {
-    char* name;
-    int status;
-    int pid;
-} * Record;
 
 Record records_array[1024];
 int number_records=0;
 
 
 
-
-// le uma linha para o line.
-ssize_t readln2(int fd, char *line, size_t size){
-  int i = 0; ssize_t res; int stop = 1; int j = 0; // int keepReading = 1; i
-  while(i < size-1 && stop && (res = read(fd,&(line[i]),200)) ) {
-     stop = stop;	
-     if (res){
-      for(j = 0; j < res && i+j < size && stop; j++){
-        if (line [i+j] == '\n') stop = 0; 
-        }
-      }
-      if (stop) i += res; 
-     // printf("Linha nº %d: %s\n",counter, line);
-     }
-  line[i+j] = '\0';
-  //off_t lseek(int fd, off_t offset, int whence);
-  //printf("Linha nº %d: %s\n",counter, line);
-  if (!stop) lseek(fd, -res+j, SEEK_CUR);
-  return i + j;
- }
 
 void update_output_index(int size){
 	int output_fd;
@@ -74,7 +46,6 @@ void update_output_index(int size){
 	    linha_length2 = sprintf(linha,"%d,\n",output_length + size);
 	    lseek(output_fd,-1,SEEK_CUR);
 	    write(output_fd,linha,linha_length2);
-	    printf("%s\n",linha);
 	}
 
 
@@ -131,14 +102,14 @@ void sigchld_handler_parent(int signum){
         if(found){
             records_array[i-1]->status=s;
         }else{
-            printf("Problemas a completar a tarefa\n");
+            write(1,"Problema no servidor, pid não correspondente a nenhuma tarefa a completar a tarefa\n",
+            strlen("Problema no servidor, pid não correspondente a nenhuma tarefa a completar a tarefa\n"));
         }
+    }else{
+        write(1,"Processo morto através de um kill externo\n",strlen("Processo morto através de um kill externo\n"));
     }
 }
 
-void sigchld_handler_child(int signum){
-    printf("SIGCHLD ignorado\n");
-}
 
 // será usado na opção -t
 void sigusr1_handler(int signum){
@@ -155,7 +126,6 @@ void sigusr1_handler(int signum){
 void sigusr2_handler(int signum){
     printf("\n\n**sigusr2 handler\n\n\n");
     for(int i=0; i<pids_count;i++){
-        printf("A terminar o processo com U pid %d\n",pids[i]);
         if(pids[i]>0){
             kill(pids[i],SIGKILL);
         }
@@ -164,16 +134,9 @@ void sigusr2_handler(int signum){
 }
 
 
-ssize_t readln(int fd, char* line, size_t size) {
-    int i;
-    printf(".");
-    for (i = 0; read(fd, line + i, 1) && printf(".") && line[i] != '\n' && i < size; i++);
-    return i;
-}
 
 char*** separate_commands(char* str, int* number_commands,
                           int** size_commands_array) {
-
     char*** command_matrix = NULL;
     char* tokenized_string = strtok(str, " ");
     int n_args = 0;      // contará em cada comando o número de argumentos
@@ -187,7 +150,7 @@ char*** separate_commands(char* str, int* number_commands,
             command_matrix[n_commands] = realloc(
                 command_matrix[n_commands],
                 sizeof(char*) * ++n_args);  // aloca espaço para mais um comando
-            command_matrix[n_commands][n_args - 1] = tokenized_string;
+            command_matrix[n_commands][n_args - 1] = strdup(tokenized_string);
         } else {
             command_matrix[n_commands] = realloc(
                 command_matrix[n_commands],
@@ -212,8 +175,6 @@ char*** separate_commands(char* str, int* number_commands,
                 sizeof(char*) * ++n_args);  // aloca espaço para mais um comando
     command_matrix[n_commands][n_args - 1] =
         NULL;  // teermina a lista de strings de um comandos em null
-    printf("%d\n",size_commands[0]);
-    printf("%d\n",n_commands);
     size_commands = realloc(size_commands, sizeof(int) * (n_commands + 1));
     size_commands[n_commands++] = n_args;
 
@@ -230,9 +191,10 @@ int execute_pipe(char*** commands, int command_count,
     int buf_total_size = 0;
     int output_fd;
     if((pid = fork())==0){
-        if (signal(SIGCHLD, sigchld_handler_child) == SIG_ERR){
-            perror("sigchild son error\n");
-        }
+        //ignora os sigchld's dos processos que compõe a task
+        if (signal(SIGCHLD, SIG_IGN)==SIG_ERR){
+             perror("SIGCHLD on child process");
+         }
         close(fifo_server_to_client_fd);
 
         alarm(time_limit_execute);
@@ -268,7 +230,6 @@ int execute_pipe(char*** commands, int command_count,
             close(pipe_command_output[0]);
 
             wait(NULL);
-            printf("A desligar o alarme");
             alarm(0);
         }else{
             int n_pids=0;
@@ -361,7 +322,6 @@ int execute_pipe(char*** commands, int command_count,
                     while((n_bytes = read(fildes[i][0],buf,1024))>0){
                         alarm(time_limit_communication);
                         write(aux_pipe[1],buf,n_bytes);
-                        write(1,buf,n_bytes);
                     }
                     close(aux_pipe[1]);
                     _exit(1);
@@ -409,7 +369,6 @@ int execute_pipe(char*** commands, int command_count,
             
             close(fildes[i-1][0]);
             for (int j = 0; j < n_pids; j++) {
-                printf("a esperar o indice: %d de %d\n",j,n_pids);
                 wait(NULL);
             }
             alarm(0);
@@ -434,17 +393,13 @@ int execute_task(char* task){
     record->name = strdup(task);
     record->status = 0;
     char buf[50];
-    int bytes_written = snprintf(buf,50,"Nova tarefa #%d\n",number_records+1);
+    int bytes_written = snprintf(buf,50,"Servidor: Nova tarefa #%d\n",number_records+1);
     write(fifo_server_to_client_fd,buf,bytes_written);
 
     int number_commands;
     int* size_commands_array;
     char*** command_matrix = separate_commands(
         task, &number_commands, &size_commands_array);
-    for (int i = 0; i < number_commands; i++) {
-        printf("%d, ", size_commands_array[i]);
-    }
-    printf("\n");
     for (int i = 0; i < number_commands; i++) {
         for (int j = 0; j < size_commands_array[i]; j++) {
             printf("%d %d %s//\n", i, j, command_matrix[i][j]);
@@ -457,6 +412,14 @@ int execute_task(char* task){
                         size_commands_array);
     record->pid = pid;
     records_array[number_records++] = record;
+
+    //libvertar a memória
+    for (int i = 0; i < number_commands; i++) {
+        for (int j = 0; j < size_commands_array[i]; j++) {
+            //free(command_matrix[i][j]);
+        }
+    }
+
     return 0;
 }
 
@@ -586,49 +549,36 @@ int main(){
         perror("SIGUSR2 error\n");
     }
 
+
+
+
     //inicializar ficheiro de indices
      int output_fd = open("log.idx", O_CREAT | O_RDWR | O_TRUNC, 0666);
-     write(output_fd,"0,\n",3);
+     write(output_fd,"0,",2);
      close(output_fd);
     //inicializar ficheiro de outputs
      output_fd = open("output.txt", O_CREAT | O_RDWR | O_TRUNC, 0666);
      close(output_fd);
      
     int fifo_client_to_server_fd;
-    printf("Chegou ao inicio\n");
     //int fifo_server_to_client_fd;
     while(fifo_client_to_server_fd = open("fifo_client_to_server",O_RDONLY)){ // para ir lendo continuamente
-        printf("\n\n\nNovo Ciclo:\n");
-        printf("fifo is open\n");
 
-        printf("A abrir o fifo de escrita\n");
         if((fifo_server_to_client_fd = open("fifo_server_to_client",O_WRONLY))<0){
             perror("open");
             return 1;
         }
-        printf("Fifo de escrita aberto\n");
-       
-
         
-        //char buf[1024];
-        //ssize_t bytes_read = readln(fifo_fd, buf, 1024);
-        //ssize_t bytes_read=readln(fifo_fd,buf,1024);
-        //int bytes_read =read(fifo_client_to_server_fd,buf,1024);
-        //buf[bytes_read] = '\0';
         int bytes_read;
         char* line = read_fifo(fifo_client_to_server_fd,&bytes_read);
 
-        printf("Linha lida %s\n, comprimento_ %d\n",line,bytes_read);
         close(fifo_client_to_server_fd);
-        printf("acabou a leitura\n");
 
         process_instruction(line,bytes_read);
         free(line);
 
         close(fifo_server_to_client_fd);
-        printf("fifo fechado\n");
     }
-
 
     return 0;
 }
