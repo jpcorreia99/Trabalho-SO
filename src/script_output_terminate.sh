@@ -9,3 +9,5 @@ make all
 ./argus -t 2
 ./argus -r
 ./argus -o 2
+echo "Excpected: no output"
+pkill argusd

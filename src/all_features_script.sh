@@ -16,6 +16,20 @@ make all
 ./argus -t 5
 ./argus -e "ls | wc | wc"
 sleep 5
-./argus -o 7
+
+
 ./argus -r
+
+echo "Expected #1: data"
+echo "Expected #2: Concluido"
+echo "Expected #3: Terminado por excesso de tempo de execução"
+echo "Expected #4: Terminado por falta de comunicação"
+echo "Expected #5: Terminado pelo utilizador"
+echo "Expected #6: Concluido"
+echo "Expected #7: Concluido"
+
+./argus -o 7
+echo "Expected Output: x | y | z"
+
 pkill argusd
+

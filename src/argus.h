@@ -25,7 +25,7 @@ typedef struct index_lines{
 
 #define FIFO_SERVER_TO_CLIENT "fifo_server_to_client"
 #define FIFO_CLIENT_TO_SERVER "fifo_client_to_server"
-#define LOG_INDEX_FILE "log2.idx"
+#define LOG_INDEX_FILE "log.idx"
 #define LOG_FILE "log.txt"
 
 char* read_line(int fd,int* bytes_read){
