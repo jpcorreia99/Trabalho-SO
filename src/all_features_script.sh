@@ -32,4 +32,5 @@ echo "Expected #7: Concluido"
 echo "Expected Output: x | y | z"
 
 pkill argusd
+make clean
 
