@@ -4,8 +4,8 @@
 
 int* pids;
 int pids_count;
-int time_limit_execute = 100;
-int time_limit_communication = 500;
+int time_limit_execute = 10;
+int time_limit_communication = 5;
 int forced_termination = 0;
 int timeout_termination = 0;
 int timeout_communication = 0;
@@ -25,8 +25,6 @@ int update_output_index(int size) {
     int linha_length2;
     char* linha = read_line(output_fd, &linha_length2);
     int linha_length;
-    // output_fd = lseek(output_fd,linha_length2,SEEK_SET);
-    // lseek(output_fd, linha_length, SEEK_CUR);
     for (linha_length = linha_length2 - 3;
          linha_length >= 0 && linha[linha_length] != ','; linha_length--)
         ;
@@ -318,9 +316,6 @@ int execute_pipe(char*** commands, int command_count,
             }
 
             if ((pid = fork()) == 0) {
-                if (signal(SIGALRM, communication_limit_handler) == SIG_ERR) {
-                    perror("sigchild son error\n");
-                }
 
                 close(fildes[i - 1][0]);
                 dup2(aux_pipe[0], 0);
@@ -337,6 +332,10 @@ int execute_pipe(char*** commands, int command_count,
             close(pipe_command_output[1]);
 
             if ((pid = fork()) == 0) {
+                    if (signal(SIGALRM, communication_limit_handler) ==
+                        SIG_ERR) {
+                        perror("sigchild son error\n");
+                    }
                 output_fd = open(LOG_FILE, O_RDWR | O_CREAT | O_APPEND, 0666);
                 alarm(time_limit_communication);
                 while ((buf_line_size =
@@ -384,11 +383,6 @@ int execute_task(char* task) {
     int* size_commands_array;
     char*** command_matrix =
         separate_commands(task, &number_commands, &size_commands_array);
-    /*for (int i = 0; i < number_commands; i++) {
-        for (int j = 0; j < size_commands_array[i]; j++) {
-            printf("%d %d %s//\n", i, j, command_matrix[i][j]);
-        }
-    }*/
 
     int status;
     pid_t pid =
