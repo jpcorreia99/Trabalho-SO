@@ -1,0 +1,25 @@
+a.out
+argus
+argus.c
+argusd
+argusd.c
+argusd (cópia)
+argus.h
+debug
+fifo_client_to_server
+fifo_server_to_client
+index_test
+index_test.c
+log.idx
+Makefile
+output.txt
+script_communication_limit.sh
+script_execution_limit.sh
+script_output.sh
+script_output_terminate.sh
+script_terminate_task.sh
+script_teste.sh
+s_index
+testeBasico
+testeGetLine
+testeGetLine (cópia)
