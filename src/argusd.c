@@ -28,12 +28,11 @@ void update_output_index(int size){
 		write(output_fd,"0,\n",3);
 		lseek(output_fd,0,SEEK_SET);
 	}
-	char linha [1024];
+	int linha_length2;
+	char *linha = read_line(output_fd,&linha_length2);
 	int linha_length;
-	int linha_length2 = readln2(output_fd,linha,1024);
 	    //output_fd = lseek(output_fd,linha_length2,SEEK_SET);
 	   // lseek(output_fd, linha_length, SEEK_CUR);
-	    
 	    for(linha_length = linha_length2 - 3 ; linha_length >= 0 && linha[linha_length] != ','; linha_length--){
 		;
 	    }
@@ -42,6 +41,7 @@ void update_output_index(int size){
 	    linha_length2 = sprintf(linha,"%d,\n",output_length + size);
 	    lseek(output_fd,-1,SEEK_CUR);
 	    write(output_fd,linha,linha_length2);
+	    free(linha);
 	}
 
 

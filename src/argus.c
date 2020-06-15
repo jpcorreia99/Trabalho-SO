@@ -1,26 +1,6 @@
 #include "argus.h"
 
-char* read_line(int fd,int* bytes_read){
-    *bytes_read=0;
-    int total_bytes_read=0;
-    int max_size = 900;
-    char* res = malloc(sizeof(char)*max_size);
-    int n_bytes_read=0;
-    
-    while((n_bytes_read=read(fd,res+total_bytes_read,1))>0){
-        total_bytes_read++;
-        if(res[total_bytes_read-1]=='\n'){
-            res[total_bytes_read-1] = '\0';
-            break;
-        }
-        if(total_bytes_read==max_size){
-            max_size*=2; 
-            res = realloc(res,sizeof(char) * (max_size));
-        }
-    }
-    *bytes_read = total_bytes_read-1;
-    return res;
-}
+
 
 //mudar output.txt para output.idx e mudar o nome readln2
 //completar o relatório com os testes
