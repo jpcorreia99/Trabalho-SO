@@ -42,6 +42,7 @@ int get_offset_for_output(int index, char** line){
 		token = strtok(NULL,",");
 		index--;	
 	}
+	free(linha);
 	if (token == NULL) return -3; // pediu um indice maior do que o tamanho do array
 	int start = strtol(penultimate_token,NULL,10);
 	int end = strtol(token,NULL,10);
@@ -54,7 +55,6 @@ int get_offset_for_output(int index, char** line){
 	printf("RES = %d\n",end-start);
 	int res = read(fd,*line,(end-start));
 	close(fd);
-	free(linha);
 	return res;
 }
 
