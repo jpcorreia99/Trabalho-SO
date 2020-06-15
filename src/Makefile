@@ -4,18 +4,29 @@ VGFLAGS = --leak-check=full -s --show-reachable=yes --track-origins=yes --keep-s
 EXECUTABLE=argus
 
 clean:
-	rm argusd
-	rm argus
-	rm fifo_client_to_server
-	rm fifo_server_to_client
-	rm output.txt
-	rm log.idx
+	rm -f argusd
+	rm -f argus
+	rm -f fifo_client_to_server
+	rm -f fifo_server_to_client
+	rm -f log.txt
+	rm -f log.idx
+	pkill argusd || true
+	pkill argus || true
 
 make all:
 	gcc -o  argusd argusd.c
 	gcc -o argus argus.c
-	mkfifo "fifo_client_to_server" -m666 
-	mkfifo "fifo_server_to_client" -m666 
+
+	@ if ! [  -a fifo_client_to_server ] ; \
+		then \
+     mkfifo "fifo_client_to_server" -m666  ; \
+		fi;
+
+	@ if ! [  -a fifo_server_to_client ] ; \
+		then \
+     mkfifo "fifo_server_to_client" -m666   ; \
+		fi;
+
 
 grind:
 	valgrind $(VGFLAGS) ./$(EXECUTABLE) 

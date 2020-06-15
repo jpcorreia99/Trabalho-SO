@@ -1,6 +1,0 @@
-#!/bin/bash
-
-gcc -g -o index_test index_test.c 
-./index_test 
-cat log.idx 
-
