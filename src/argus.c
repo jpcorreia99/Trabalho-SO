@@ -9,7 +9,7 @@
 Devolve -1 caso o ficheiro nao existir, -2 caso seja um comando q nao tem output e -3 caso o indice dado nao corresponde a um comando valido.*/
 int get_offset_for_output(int index, char** line){
 	int fd;
-	if ((fd = open("log.idx",O_RDONLY)) < 0)
+	if ((fd = open(LOG_INDEX_FILE,O_RDONLY)) < 0)
 		return -1;
 	int index_line_size; 
 	char *linha = read_line(fd,&index_line_size); //ler a linha
@@ -33,13 +33,12 @@ int get_offset_for_output(int index, char** line){
 		return -2;
 		free(linha);
 	}
-	if ((fd = open("output.txt",O_RDONLY)) < 0){
+	if ((fd = open(LOG_FILE,O_RDONLY)) < 0){
 		return -1;
 		free(linha);
 	}
 	*line = malloc((end - start) * sizeof(char));
 	lseek(fd,start,SEEK_SET);
-	printf("RES = %d\n",end-start);
 	int res = read(fd,*line,(end-start));
 	close(fd);
 	free(linha);

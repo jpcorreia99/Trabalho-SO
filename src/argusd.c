@@ -21,28 +21,26 @@ int fifo_server_to_client_fd=-1;
 Record records_array[1024];
 int number_records=0;
 
-void update_output_index(int size){
+int update_output_index(int size){
 	int output_fd;
 	if ((output_fd = open("log.idx", O_RDWR , 0666)) < 0){
-		output_fd = open("log.idx", O_RDWR | O_CREAT, 0666);
-		write(output_fd,"0,\n",3);
-		lseek(output_fd,0,SEEK_SET);
+		write(1,"Erro no servidor a abrir o ficheiro log.idx\n",strlen("Erro no servidor a abrir o ficheiro log.idx\n"));
+        return 1;
 	}
 	int linha_length2;
 	char *linha = read_line(output_fd,&linha_length2);
 	int linha_length;
-	    //output_fd = lseek(output_fd,linha_length2,SEEK_SET);
-	   // lseek(output_fd, linha_length, SEEK_CUR);
-	    for(linha_length = linha_length2 - 3 ; linha_length >= 0 && linha[linha_length] != ','; linha_length--){
-		;
-	    }
-	    linha_length++; 
-	    int output_length = strtol(&(linha[linha_length]),NULL,10);
-	    linha_length2 = sprintf(linha,"%d,\n",output_length + size);
-	    lseek(output_fd,-1,SEEK_CUR);
-	    write(output_fd,linha,linha_length2);
-	    free(linha);
-	}
+    //output_fd = lseek(output_fd,linha_length2,SEEK_SET);
+    // lseek(output_fd, linha_length, SEEK_CUR);
+    for(linha_length = linha_length2 - 3 ; linha_length >= 0 && linha[linha_length] != ','; linha_length--);
+    linha_length++; 
+    int output_length = strtol(&(linha[linha_length]),NULL,10);
+    linha_length2 = sprintf(linha,"%d,\n",output_length + size);
+    lseek(output_fd,-1,SEEK_CUR);
+    write(output_fd,linha,linha_length2);
+    free(linha);
+    return 0;
+}
 
 
 
@@ -65,7 +63,6 @@ char* read_fifo(int fifo_fd,int* bytes_read){
 
 // para a opção -m
 void timeout_handler(int signum) { 
-    printf("Timeout handler");
     for (int i = 0; i < pids_count; i++) {
         if (pids[i] > 0) {  // evitar kill -1/0;
             kill(pids[i], SIGKILL);
@@ -82,12 +79,10 @@ void communication_limit_handler(int signum) {
 }
 
 void sigchld_handler_parent(int signum){
-    printf("O Handler do pai\n");
     int status,s=0;
     pid_t pid = wait(&status);
     if (WIFEXITED(status)){ 
         int s=WEXITSTATUS(status);
-        printf("O Pid apanhado no / do pai é %d\n",pid);
         int found=0;
         int i;
         for(i=0;i<number_records && !found;i++){
@@ -109,7 +104,6 @@ void sigchld_handler_parent(int signum){
 
 // será usado na opção -t
 void sigusr1_handler(int signum){
-    printf("sigusr1 handler, terminar o processo\n");
     for(int i=0; i<pids_count;i++){
         if(pids[i]>0){
             kill(pids[i],SIGKILL);
@@ -120,7 +114,6 @@ void sigusr1_handler(int signum){
 
 // será usado na opção -i para o pai dos processos matar os filhos todos
 void sigusr2_handler(int signum){
-    printf("\n\n**sigusr2 handler\n\n\n");
     for(int i=0; i<pids_count;i++){
         if(pids[i]>0){
             kill(pids[i],SIGKILL);
@@ -214,7 +207,7 @@ int execute_pipe(char*** commands, int command_count,
             pids[0] = pid;  // nota: o fork devolve o pid do filho para o pai
 
             
-            output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
+            output_fd = open(LOG_FILE, O_RDWR | O_CREAT | O_APPEND, 0666);
             close(pipe_command_output[1]);
             while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
                 buf_total_size += write(output_fd,buf,buf_line_size);
@@ -348,16 +341,14 @@ int execute_pipe(char*** commands, int command_count,
             close(pipe_command_output[1]);
             
             if((pid=fork())==0){
-                output_fd = open("output.txt", O_RDWR | O_CREAT | O_APPEND, 0666);
+                output_fd = open(LOG_FILE, O_RDWR | O_CREAT | O_APPEND, 0666);
                 alarm(time_limit_communication);
                 while((buf_line_size = read(pipe_command_output[0],buf,1024)) > 0){
                     alarm(time_limit_communication);
                     buf_total_size += write(output_fd,buf,buf_line_size);
-                    write(1,buf,buf_line_size);
                 }
                 if (buf_total_size >= 0){
                 	update_output_index(buf_total_size);
-		//	update_output_index2(buf_total_size,number_records +1 );
                 }
                 close(output_fd);
                 close(pipe_command_output[0]);
@@ -398,11 +389,11 @@ int execute_task(char* task){
     int* size_commands_array;
     char*** command_matrix = separate_commands(
         task, &number_commands, &size_commands_array);
-    for (int i = 0; i < number_commands; i++) {
+    /*for (int i = 0; i < number_commands; i++) {
         for (int j = 0; j < size_commands_array[i]; j++) {
             printf("%d %d %s//\n", i, j, command_matrix[i][j]);
         }
-    }
+    }*/
 
     int status;
     pid_t pid =
@@ -551,11 +542,11 @@ int main(){
 
 
     //inicializar ficheiro de indices
-     int output_fd = open("log.idx", O_CREAT | O_RDWR | O_TRUNC, 0666);
+     int output_fd = open(LOG_INDEX_FILE, O_CREAT | O_RDWR | O_TRUNC, 0666);
      write(output_fd,"0,\n",3);
      close(output_fd);
     //inicializar ficheiro de outputs
-     output_fd = open("output.txt", O_CREAT | O_RDWR | O_TRUNC, 0666);
+     output_fd = open(LOG_FILE, O_CREAT | O_RDWR | O_TRUNC, 0666);
      close(output_fd);
      
     int fifo_client_to_server_fd;
