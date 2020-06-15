@@ -4,7 +4,6 @@
 //./a.out -e "ls | wc"
 //./a.out -e "grep -v ˆ# /etc/passwd | cut -f7 -d: | uniq | wc -l"
 
-//mudar leitura do pipe client -> server para não ser só read
 
 
 
@@ -22,58 +21,11 @@ int fifo_server_to_client_fd=-1;
 Record records_array[1024];
 int number_records=0;
 
-
-void update_output_index2(int size, int index){
-	int output_fd;
-	printf("INDEX : %d\n",index);
-	output_fd = open("log.idx", O_RDWR | O_CREAT, 0666);
-	char linha [1024];
-	int index_line_size = readln2(output_fd,linha,1024);
-	char *token = strtok(linha,",");
-	char *penultimate_token = token; 
-	token = strtok(NULL,",");
-	int sum = 0;
-	char buf[24];
-	int aux_size;
-	int current_size;
-	while (token != NULL){
-		if (index = 1) sum = size;
-		current_size = strtol(penultimate_token,NULL,10) + sum;
-		aux_size = sprintf(buf,"%d,",current_size);
-		write(output_fd,buf,aux_size);
-		token = strtok(NULL,",");
-		index--;	
-	}
-	current_size = strtol(penultimate_token,NULL,10) + sum;
-	aux_size = sprintf(buf,"%d,",current_size);
-	write(output_fd,buf,aux_size);
-	close(output_fd);
-}
-/*
-
-
-char* read_fifo(int fifo_fd,int* bytes_read){
-    *bytes_read=0;
-    int total_bytes_read=0;
-    char* res = malloc(sizeof(char)*1024);
-    int n_bytes_read;
-    while((n_bytes_read=read(fifo_fd,res+total_bytes_read,1024))>0){
-        total_bytes_read +=n_bytes_read;
-        if(n_bytes_read==1024){
-            res = realloc(res,sizeof(char) * (total_bytes_read * 2));
-        }
-    }
-    res[total_bytes_read]='\0';
-    *bytes_read = total_bytes_read;
-    return res;
-}*/
-
-
 void update_output_index(int size){
 	int output_fd;
 	if ((output_fd = open("log.idx", O_RDWR , 0666)) < 0){
 		output_fd = open("log.idx", O_RDWR | O_CREAT, 0666);
-		write(output_fd,"0,",2);
+		write(output_fd,"0,\n",3);
 		lseek(output_fd,0,SEEK_SET);
 	}
 	char linha [1024];
@@ -82,12 +34,12 @@ void update_output_index(int size){
 	    //output_fd = lseek(output_fd,linha_length2,SEEK_SET);
 	   // lseek(output_fd, linha_length, SEEK_CUR);
 	    
-	    for(linha_length = linha_length2 - 2 ; linha_length >= 0 && linha[linha_length] != ','; linha_length--){
+	    for(linha_length = linha_length2 - 3 ; linha_length >= 0 && linha[linha_length] != ','; linha_length--){
 		;
 	    }
 	    linha_length++; 
 	    int output_length = strtol(&(linha[linha_length]),NULL,10);
-	    linha_length2 = sprintf(linha,"%d,",output_length + size);
+	    linha_length2 = sprintf(linha,"%d,\n",output_length + size);
 	    lseek(output_fd,-1,SEEK_CUR);
 	    write(output_fd,linha,linha_length2);
 	}
@@ -600,7 +552,7 @@ int main(){
 
     //inicializar ficheiro de indices
      int output_fd = open("log.idx", O_CREAT | O_RDWR | O_TRUNC, 0666);
-     write(output_fd,"0,",2);
+     write(output_fd,"0,\n",3);
      close(output_fd);
     //inicializar ficheiro de outputs
      output_fd = open("output.txt", O_CREAT | O_RDWR | O_TRUNC, 0666);
@@ -608,9 +560,9 @@ int main(){
      
     int fifo_client_to_server_fd;
     //int fifo_server_to_client_fd;
-    while(fifo_client_to_server_fd = open("fifo_client_to_server",O_RDONLY)){ // para ir lendo continuamente
+    while(fifo_client_to_server_fd = open(FIFO_CLIENT_TO_SERVER,O_RDONLY)){ // para ir lendo continuamente
 
-        if((fifo_server_to_client_fd = open("fifo_server_to_client",O_WRONLY))<0){
+        if((fifo_server_to_client_fd = open(FIFO_SERVER_TO_CLIENT,O_WRONLY))<0){
             perror("open");
             return 1;
         }

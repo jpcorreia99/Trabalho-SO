@@ -18,6 +18,11 @@ typedef struct record {
 } * Record;
 
 
+#define FIFO_SERVER_TO_CLIENT "fifo_server_to_client"
+#define FIFO_CLIENT_TO_SERVER "fifo_client_to_server"
+
+
+
 
 // le uma linha para o line.
 ssize_t readln2(int fd, char *line, size_t size){
