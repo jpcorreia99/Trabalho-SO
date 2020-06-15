@@ -8,12 +8,21 @@ int get_output_from_index(int index, char **line){
     int output_fd;
     if ((output_fd = open(LOG_INDEX_FILE, O_RDWR | O_CREAT, 0666)) < 0)
     	return -1;
-    int bytes_t = lseek(output_fd,(index - 1) * sizeof(IndexRecord),SEEK_SET);
-    if (bytes_t != (index - 1) * sizeof(IndexRecord)) return -3;
     IndexRecord p1;
-    if (read(output_fd,&p1,sizeof(IndexRecord)) != sizeof(IndexRecord) ){
-	return -1;
+    IndexRecord p;
+    int continue_ = 1;
+    int bytes_t = 1;
+    while ((bytes_t > 0) && continue_){
+	//printf("p1.index: %d, index: %d\n",p1.index,index);
+	if(continue_)
+		bytes_t = read(output_fd,&p1,sizeof(IndexRecord));
+	if (bytes_t > 0){
+		if (p1.index == index) 
+			continue_ = 0;   
+	}
     }
+    //printf("continue = %d ,index = %d, , p1.index = %d\n",continue_,index,p1.index);
+    if (continue_ == 1) return -3;
     int start = p1.start;
     int end = p1.end;
     close(output_fd);
