@@ -15,6 +15,29 @@ int fifo_server_to_client_fd = -1;
 Record records_array[1024];
 int number_records = 0;
 
+int update_output_index3(int size, int index){	
+	IndexRecord ip;
+	ip.index = index;
+	ip.start = 0;
+	ip.end = size;
+	int output_fd;
+	if ((output_fd = open(LOG_INDEX_FILE, O_RDWR | O_CREAT, 0666)) < 0)
+		return -1;
+	int file_size = lseek(output_fd,0,SEEK_END);
+	if (abs(file_size) >= sizeof(IndexRecord)){
+		file_size = lseek(output_fd,file_size - sizeof(IndexRecord),SEEK_SET);
+		IndexRecord lastRecord;
+		if ((read(output_fd,&lastRecord,sizeof(IndexRecord))) > 0){
+			ip.start += lastRecord.end;
+			ip.end += lastRecord.end;
+		}
+		
+	}
+	write(output_fd,&ip,sizeof(IndexRecord));
+	close(output_fd);
+	return 0;
+}
+
 void update_output_index2(int size, int index){	
 	int output_fd;
 	output_fd = open("log.idx", O_RDWR | O_CREAT, 0666);
@@ -250,7 +273,7 @@ int execute_pipe(char*** commands, int command_count,
             }
             if (buf_total_size >= 0) {
                 //update_output_index(buf_total_size);
-                 update_output_index2(buf_total_size,number_records + 1);
+                 update_output_index3(buf_total_size,number_records + 1);
             }
             close(pipe_command_output[1]);
             close(pipe_command_output[0]);
@@ -386,7 +409,7 @@ int execute_pipe(char*** commands, int command_count,
                 }
                 if (buf_total_size >= 0) {
                 //    update_output_index(buf_total_size);
-			update_output_index2(buf_total_size,number_records +1);
+			update_output_index3(buf_total_size,number_records +1);
                 }
                 close(output_fd);
                 close(pipe_command_output[0]);
@@ -589,7 +612,6 @@ int main() {
 
     // inicializar ficheiro de indices
     int output_fd = open(LOG_INDEX_FILE, O_CREAT | O_RDWR | O_TRUNC, 0666);
-    write(output_fd, "0,\n", 3);
     close(output_fd);
     // inicializar ficheiro de logs
     output_fd = open(LOG_FILE, O_CREAT | O_RDWR | O_TRUNC, 0666);

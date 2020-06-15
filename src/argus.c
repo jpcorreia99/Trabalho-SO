@@ -1,6 +1,37 @@
 #include "argus.h"
 
 
+
+
+
+int get_output_from_index(int index, char **line){
+    int output_fd;
+    if ((output_fd = open(LOG_INDEX_FILE, O_RDWR | O_CREAT, 0666)) < 0)
+    	return -1;
+    int bytes_t = lseek(output_fd,(index - 1) * sizeof(IndexRecord),SEEK_SET);
+    if (bytes_t != (index - 1) * sizeof(IndexRecord)) return -3;
+    IndexRecord p1;
+    if (read(output_fd,&p1,sizeof(IndexRecord)) != sizeof(IndexRecord) ){
+	return -1;
+    }
+    int start = p1.start;
+    int end = p1.end;
+    close(output_fd);
+    if (start == end) {
+        return -2;
+    }
+    if ((output_fd = open(LOG_FILE, O_RDONLY)) < 0) {
+        return -1;
+    }
+    *line = malloc((end - start) * sizeof(char));
+    lseek(output_fd, start, SEEK_SET);
+    int res = read(output_fd, *line, (end - start));
+    close(output_fd);
+    return res;
+}
+
+
+
 /*recebe um index, e devolve a linha q corresponde ao output desse index.
 Devolve -1 caso o ficheiro nao existir, -2 caso seja um comando q nao tem output
 e -3 caso o indice dado nao corresponde a um comando valido.*/
@@ -440,7 +471,7 @@ int main(int argc, char* argv[]) {
                 int index = strtol(command[1], NULL, 10);
                 int output_size;
                 if ((output_size =
-                         get_offset_for_output(index, &outputSearch)) > 0) {
+                         get_output_from_index(index, &outputSearch)) > 0) {
                     write(1, outputSearch, output_size);
                     free(outputSearch);
                 } else {
@@ -483,7 +514,7 @@ int main(int argc, char* argv[]) {
                     int index = strtol(separated_line[1], NULL, 10);
                     int output_size;
                     if ((output_size =
-                             get_offset_for_output(index, &outputSearch)) > 0) {
+                           get_output_from_index(index, &outputSearch)) > 0) {
                         write(1, outputSearch, output_size);
                         free(outputSearch);
                     } else {
