@@ -15,6 +15,46 @@ int fifo_server_to_client_fd = -1;
 Record records_array[1024];
 int number_records = 0;
 
+void update_output_index2(int size, int index){	
+	int output_fd;
+	output_fd = open("log.idx", O_RDWR | O_CREAT, 0666);
+	int index_line_size ;
+	char *linha = read_line(output_fd,&index_line_size);
+	char *token = strtok(linha,",");
+	char *penultimate_token = token; 
+	if (token != NULL)
+		token = strtok(NULL,",");
+	int sum = 0;
+	char buf[24];
+	int aux_size;
+	int current_size;
+	lseek(output_fd,0,SEEK_SET);
+	while (penultimate_token != NULL) {
+		current_size = strtol(penultimate_token,NULL,10) + sum;
+		aux_size = sprintf(buf,"%d,",current_size);
+		write(output_fd,buf,aux_size);
+		penultimate_token = token;
+		if (token != NULL) {
+			token = strtok(NULL,",");
+		}
+		if (index == 1){
+			sum = size;
+			current_size = sprintf(buf,"%d,",current_size + size);		
+			write(output_fd,buf,current_size);
+		}
+		index--;	
+	} 
+	if (index >= 1){
+		sum = size;
+		current_size = sprintf(buf,"%d,",current_size + size);		
+		write(output_fd,buf,current_size);
+	}	
+	write(output_fd,"\n",1);
+	close(output_fd);
+	free(linha);
+}
+
+
 int update_output_index(int size) {
     int output_fd;
     if ((output_fd = open("log.idx", O_RDWR, 0666)) < 0) {
@@ -209,8 +249,8 @@ int execute_pipe(char*** commands, int command_count,
                 buf_total_size += write(output_fd, buf, buf_line_size);
             }
             if (buf_total_size >= 0) {
-                update_output_index(buf_total_size);
-                // update_output_index2(buf_total_size,number_records + 1);
+                //update_output_index(buf_total_size);
+                 update_output_index2(buf_total_size,number_records + 1);
             }
             close(pipe_command_output[1]);
             close(pipe_command_output[0]);
@@ -345,7 +385,8 @@ int execute_pipe(char*** commands, int command_count,
                     buf_total_size += write(output_fd, buf, buf_line_size);
                 }
                 if (buf_total_size >= 0) {
-                    update_output_index(buf_total_size);
+                //    update_output_index(buf_total_size);
+			update_output_index2(buf_total_size,number_records +1);
                 }
                 close(output_fd);
                 close(pipe_command_output[0]);
