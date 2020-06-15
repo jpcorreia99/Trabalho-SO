@@ -38,31 +38,45 @@ void update_output_index2(int size, int index){
 	char *linha = read_line(output_fd,&index_line_size);
 	char *token = strtok(linha,",");
 	char *penultimate_token = token; 
-	//token = strtok(NULL,",");
+	if (token != NULL)
+		token = strtok(NULL,",");
 	int sum = 0;
 	char buf[24];
 	int aux_size;
 	int current_size;
 	lseek(output_fd,0,SEEK_SET);
-	do {
+	while (penultimate_token != NULL) {
 		current_size = strtol(penultimate_token,NULL,10) + sum;
 		aux_size = sprintf(buf,"%d,",current_size);
 		write(output_fd,buf,aux_size);
-		token = strtok(NULL,",");
+		penultimate_token = token;
+		if (token != NULL) {
+			token = strtok(NULL,",");
+		}
+		if (index == 1){
+			sum = size;
+			current_size = sprintf(buf,"%d,",current_size + size);		
+			write(output_fd,buf,current_size);
+		}
 		index--;	
-		if (index == 1) sum = size;
-	} while (token != NULL);
-	sum = size;
-	current_size = strtol(penultimate_token,NULL,10) + sum;
-	aux_size = sprintf(buf,"%d,",current_size);
-	write(output_fd,buf,aux_size);
+	} 
+	if (index >= 1){
+		sum = size;
+		current_size = sprintf(buf,"%d,",current_size + size);		
+		write(output_fd,buf,current_size);
+	}	
+	write(output_fd,"\n",1);
 	close(output_fd);
+	free(linha);
 }
 
 void main(){	
 	int output_fd = open("log.idx", O_RDWR | O_TRUNC | O_CREAT , 0666);
 	write(output_fd,"0,\n",3);
 	close(output_fd);
-	update_output_index2(13,1);
-	//update_output_index2(24,2);
+	update_output_index2(10,1);
+	update_output_index2(20,3);
+	update_output_index2(100,10);
+	update_output_index2(9,2);
 }
+
