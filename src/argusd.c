@@ -23,29 +23,6 @@ Record records_array[1024];
 int number_records=0;
 
 
-
-
-
-// le uma linha para o line.
-ssize_t readln2(int fd, char *line, size_t size){
-  int i = 0; ssize_t res; int stop = 1; int j = 0; // int keepReading = 1; i
-  while(i < size-1 && stop && (res = read(fd,&(line[i]),200)) ) {
-     stop = stop;	
-     if (res){
-      for(j = 0; j < res && i+j < size && stop; j++){
-        if (line [i+j] == '\n') stop = 0; 
-        }
-      }
-      if (stop) i += res; 
-     // printf("Linha nº %d: %s\n",counter, line);
-     }
-  line[i+j] = '\0';
-  //off_t lseek(int fd, off_t offset, int whence);
-  //printf("Linha nº %d: %s\n",counter, line);
-  if (!stop) lseek(fd, -res+j, SEEK_CUR);
-  return i + j;
- }
-
 void update_output_index2(int size, int index){
 	int output_fd;
 	printf("INDEX : %d\n",index);
@@ -105,12 +82,12 @@ void update_output_index(int size){
 	    //output_fd = lseek(output_fd,linha_length2,SEEK_SET);
 	   // lseek(output_fd, linha_length, SEEK_CUR);
 	    
-	    for(linha_length = linha_length2 - 3 ; linha_length >= 0 && linha[linha_length] != ','; linha_length--){
+	    for(linha_length = linha_length2 - 2 ; linha_length >= 0 && linha[linha_length] != ','; linha_length--){
 		;
 	    }
 	    linha_length++; 
 	    int output_length = strtol(&(linha[linha_length]),NULL,10);
-	    linha_length2 = sprintf(linha,"%d,\n",output_length + size);
+	    linha_length2 = sprintf(linha,"%d,",output_length + size);
 	    lseek(output_fd,-1,SEEK_CUR);
 	    write(output_fd,linha,linha_length2);
 	}
@@ -291,8 +268,8 @@ int execute_pipe(char*** commands, int command_count,
                 buf_total_size += write(output_fd,buf,buf_line_size);
             }
             if (buf_total_size >= 0){
-	    	//    update_output_index(buf_total_size);
-		update_output_index2(buf_total_size,number_records + 1);
+	    	    update_output_index(buf_total_size);
+		//update_output_index2(buf_total_size,number_records + 1);
             }
             close(pipe_command_output[1]);
             close(pipe_command_output[0]);
@@ -427,8 +404,8 @@ int execute_pipe(char*** commands, int command_count,
                     write(1,buf,buf_line_size);
                 }
                 if (buf_total_size >= 0){
-                  //  update_output_index(buf_total_size);
-			update_output_index2(buf_total_size,number_records +1 );
+                	update_output_index(buf_total_size);
+		//	update_output_index2(buf_total_size,number_records +1 );
                 }
                 close(output_fd);
                 close(pipe_command_output[0]);

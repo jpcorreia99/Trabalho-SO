@@ -1,0 +1,20 @@
+#!/bin/bash
+
+gcc -g -o index_test index_test.c 
+./index_test 
+cat log.idx 
+
+./argus -m 15
+./argus -e "ls"
+./argus -e "ls | wc"
+./argus -e "sleep 15" 
+./argus -e "ls | wc"
+sleep 3
+./argus -t 3
+./argus -r
+echo "DEVIA SER O OUTPUT DE SLEEP:\n" 
+./argus -o 3
+echo "DEVIA SER O OUTPUT DE LS | WC:\n"
+./argus -o 4
+
+

@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo "Este teste verifica a funcionalidade básica da operação -o."
+sleep 2
+./argus -e "ls"
+./argus -e "ls | wc"
+echo "Output de ls | wc:"
+./argus -o 2
+sleep 2
+echo "Output de -o 3 (nada):"
+./argus -o 3
+
