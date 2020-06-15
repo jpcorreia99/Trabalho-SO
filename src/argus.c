@@ -42,19 +42,27 @@ int get_offset_for_output(int index, char** line){
 		token = strtok(NULL,",");
 		index--;	
 	}
-	free(linha);
-	if (token == NULL) return -3; // pediu um indice maior do que o tamanho do array
+	if (token == NULL){
+		return -3;
+		free(linha);
+	} // pediu um indice maior do que o tamanho do array
 	int start = strtol(penultimate_token,NULL,10);
 	int end = strtol(token,NULL,10);
 	close(fd);
-	if (start == end) return -2;
-	if ((fd = open("output.txt",O_RDONLY)) < 0)
+	if (start == end){
+		return -2;
+		free(linha);
+	}
+	if ((fd = open("output.txt",O_RDONLY)) < 0){
 		return -1;
+		free(linha);
+	}
 	*line = malloc((end - start) * sizeof(char));
 	lseek(fd,start,SEEK_SET);
 	printf("RES = %d\n",end-start);
 	int res = read(fd,*line,(end-start));
 	close(fd);
+	free(linha);
 	return res;
 }
 
