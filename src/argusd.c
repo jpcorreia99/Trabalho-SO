@@ -249,7 +249,7 @@ int execute_pipe(char*** commands, int command_count,
         int pipe_command_output[2];
         pipe(pipe_command_output);
 
-        memset(pids, -1, pids_count);
+        //memset(pids, -1, pids_count);
         if (command_count == 1) {
             pids_count = command_count;
             pids = malloc(sizeof(int) * pids_count);
